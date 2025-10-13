@@ -1,18 +1,3 @@
-composer create-project laravel/laravel example-app "11.*"
-laravel new club11
-composer require laravel/breeze --dev
-php artisan breeze:install livewire
-php artisan migrate
-npm install
-npm run build
-composer require filament/filament -W
-php artisan filament:install --panels
-
-
-
-
-
-
 
 
 # 0) New project (skip if already created)
