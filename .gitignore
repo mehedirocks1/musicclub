@@ -1,0 +1,38 @@
+# Laravel standard
+/vendor/
+node_modules/
+public/storage
+public/hot
+storage/*.key
+storage/pail
+.env
+.env.*
+.env.backup
+.env.production
+Homestead.json
+Homestead.yaml
+
+# Build & cache
+/public/build
+/.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+
+# IDE & editor configs
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+
+# Logs & debug
+npm-debug.log
+yarn-error.log
+auth.json
+
+# PHPStorm / JetBrains cache
+/.phpstorm.meta.php
+
+# Laravel Nova / Filament
+composer.lock
+.phpunit.result.cache
