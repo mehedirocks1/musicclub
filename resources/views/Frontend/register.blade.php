@@ -152,7 +152,7 @@
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-yellow-500 file:text-black file:font-semibold hover:file:bg-yellow-400">
                     </div>
 
-                    {{-- Optional: Password fields (if you want to let users set it now) --}}
+                    {{-- Optional: Password fields --}}
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Password (optional)</label>
                         <input type="password" name="password"
@@ -164,6 +164,35 @@
                         <label class="block text-sm text-gray-300 mb-1">Confirm Password (optional)</label>
                         <input type="password" name="password_confirmation"
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+
+                    {{-- ✅ Membership Plan (Monthly/Yearly) --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm text-gray-300 mb-2">Membership Plan <span class="text-yellow-500">*</span></label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-3 rounded-lg border border-yellow-600/30 bg-black/40 p-3 cursor-pointer hover:border-yellow-400/60">
+                                <input type="radio" name="membership_plan" value="monthly" required
+                                       @checked(old('membership_plan')==='monthly') class="accent-yellow-500">
+                                <span class="text-yellow-400 font-semibold">Monthly</span>
+                                <span class="ml-auto text-gray-300">৳200</span>
+                            </label>
+
+                            <label class="flex items-center gap-3 rounded-lg border border-yellow-600/30 bg-black/40 p-3 cursor-pointer hover:border-yellow-400/60">
+                                <input type="radio" name="membership_plan" value="yearly" required
+                                       @checked(old('membership_plan')==='yearly') class="accent-yellow-500">
+                                <span class="text-yellow-400 font-semibold">Yearly</span>
+                                <span class="ml-auto text-gray-300">৳2,000</span>
+                            </label>
+                        </div>
+
+                        <div class="mt-3 rounded-lg border border-yellow-600/30 bg-black/30 p-3 text-sm text-gray-300">
+                            <div class="flex items-center justify-between">
+                                <span>Payable Amount</span>
+                                <span id="payable-amount" class="font-bold text-yellow-400">৳0</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Selected plan fee will be processed via SSLCommerz. On success, the amount will be added to your member balance.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -181,4 +210,18 @@
         </div>
     </section>
 </div>
+
+{{-- tiny helper to show payable amount --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const radios = document.querySelectorAll('input[name="membership_plan"]');
+    const amt = document.getElementById('payable-amount');
+    const setAmt = () => {
+        const v = document.querySelector('input[name="membership_plan"]:checked')?.value;
+        amt.textContent = v === 'yearly' ? '৳2,000' : (v === 'monthly' ? '৳200' : '৳0');
+    };
+    radios.forEach(r => r.addEventListener('change', setAmt));
+    setAmt();
+});
+</script>
 @endsection

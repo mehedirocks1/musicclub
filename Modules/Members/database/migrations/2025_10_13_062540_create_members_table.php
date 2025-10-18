@@ -24,7 +24,9 @@ return new class extends Migration
             $table->string('phone', 20)->nullable()->unique();
 
             // 🔐 Authentication
-            $table->string('password')->nullable(); //  
+            $table->string('password')->nullable();
+            $table->rememberToken(); // 🔐 optional but useful for auth guards
+
             // 👨‍👩 Family Info
             $table->string('father_name')->nullable();
             $table->string('mother_name')->nullable();
@@ -46,12 +48,24 @@ return new class extends Migration
             $table->string('district')->nullable();
             $table->text('address')->nullable();
 
-            // 🧾 Membership
+            // 🧾 Membership (existing)
             $table->string('membership_type')->default('Student');
             $table->date('registration_date')->nullable();
 
+            // 🧾 ➕ Membership add-ons (for Monthly/Yearly + lifecycle)
+            $table->enum('membership_plan', ['monthly', 'yearly'])->default('monthly'); // ✅ new
+            $table->enum('membership_status', ['pending', 'active', 'expired', 'inactive'])->default('pending'); // ✅ new
+            $table->date('membership_started_at')->nullable();  // ✅ new
+            $table->date('membership_expires_at')->nullable();  // ✅ new
+
             // 💰 Account
             $table->decimal('balance', 12, 2)->default(0);
+
+            // 💳 Last payment snapshot (handy for dashboard/quick look)
+            $table->decimal('last_payment_amount', 12, 2)->nullable(); // ✅ new
+            $table->string('last_payment_tran_id')->nullable();        // ✅ new
+            $table->timestamp('last_payment_at')->nullable();          // ✅ new
+            $table->string('last_payment_gateway')->nullable();        // e.g., 'sslcommerz' // ✅ new
 
             // 🧠 Soft Deletes + timestamps
             $table->softDeletes();
@@ -60,6 +74,9 @@ return new class extends Migration
             // Indexes
             $table->index('membership_type');
             $table->index('registration_date');
+            $table->index('membership_plan');     // ✅ new
+            $table->index('membership_status');   // ✅ new
+            $table->index('membership_expires_at'); // ✅ new
         });
 
         // ✅ Add foreign key users.member_id → members.id

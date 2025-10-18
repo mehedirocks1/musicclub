@@ -5,4 +5,5 @@ return [
     App\Providers\Filament\AdminPanelProvider::class,
     App\Providers\Filament\MemberPanelProvider::class,
     App\Providers\VoltServiceProvider::class,
+    Raziul\Sslcommerz\SslcommerzServiceProvider::class,
 ];

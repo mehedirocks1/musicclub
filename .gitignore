@@ -5,7 +5,7 @@ public/storage
 public/hot
 storage/*.key
 storage/pail
-.env
+
 .env.*
 .env.backup
 .env.production

@@ -5,10 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\DB;
+use App\Models\MemberPayment;
 use Modules\Members\Models\Member;
-use Illuminate\Support\Facades\Auth;
+use DevWizard\Textify\Facades\Textify;   // ADD ONLY
 
 class RegistrationController extends Controller
 {
@@ -19,13 +18,13 @@ class RegistrationController extends Controller
 
     public function store(Request $request)
     {
-        // 1) Validate input
+        // 1) Validate (password optional; Member পরে success/IPN-এ তৈরি হবে)
         $data = $request->validate([
             'full_name'               => ['required', 'string', 'max:255'],
             'name_bn'                 => ['nullable', 'string', 'max:255'],
-            'username'                => ['required', 'string', 'max:50', 'unique:members,username'],
-            'email'                   => ['nullable', 'email', 'max:255', 'unique:members,email'],
-            'phone'                   => ['nullable', 'string', 'max:20', 'unique:members,phone'],
+            'username'                => ['required', 'string', 'max:50'], // ইউনিকনেস Member create সময় enforce হবে
+            'email'                   => ['nullable', 'email', 'max:255'],
+            'phone'                   => ['nullable', 'string', 'max:20'],
             'dob'                     => ['nullable', 'date'],
             'gender'                  => ['nullable', Rule::in(Member::GENDERS)],
             'blood_group'             => ['nullable', Rule::in(Member::BLOOD_GROUPS)],
@@ -40,36 +39,62 @@ class RegistrationController extends Controller
             'membership_type'         => ['required', Rule::in(Member::MEMBERSHIP_TYPES)],
             'profile_pic'             => ['nullable', 'image', 'max:2048'],
 
-            // Password for members (required + confirmed)
-            'password'               => ['required', Password::min(6), 'confirmed'],
-            'password_confirmation'  => ['required'],
+            // ✅ Plan is required for fee
+            'membership_plan'         => ['required', 'in:monthly,yearly'],
+
+            // Password optional at this step
+            'password'               => ['nullable', 'string', 'min:6', 'confirmed'],
+            'password_confirmation'  => ['nullable', 'string', 'min:6'],
         ]);
 
-        // 2) Defaults
-        $data['member_id']         = 'M' . date('ymd') . Str::upper(Str::random(4));
-        $data['registration_date'] = now();
-        $data['balance']           = 0;
-        $data['country']           = $data['country'] ?? 'Bangladesh';
-
+        // 2) Normalize
+        $data['country'] = $data['country'] ?? 'Bangladesh';
         if (!empty($data['email'])) {
             $data['email'] = strtolower(trim($data['email']));
         }
 
-        // 3) Profile picture
+        // 3) Upload profile pic (path snapshot-এ রাখা হবে)
+        $profilePath = null;
         if ($request->hasFile('profile_pic')) {
-            $data['profile_pic'] = $request->file('profile_pic')->store('members/profile_pics', 'public');
+            $profilePath = $request->file('profile_pic')->store('members/profile_pics', 'public');
         }
 
-        // 4) Ensure password is set (hashed by model cast)
-        $data['password'] = $request->input('password') ?: Str::password(12);
+        // 4) Server-side fee
+        $amount = $data['membership_plan'] === 'yearly' ? 2000.00 : 200.00;
 
-        // 5) Only members table
-        $member = DB::transaction(function () use ($data) {
-            return Member::create($data);
-        });
+        // 5) Create pending payment snapshot (❗member_id NULL)
+        $payment = MemberPayment::create([
+            'member_id'               => null,
+            'tran_id'                 => 'INV-'.Str::uuid()->toString(),
+            'plan'                    => $data['membership_plan'],
+            'amount'                  => $amount,
+            'currency'                => 'BDT',
+            'status'                  => 'pending',
 
-        // 6) Login as member and redirect
-        Auth::guard('member')->login($member);
-        return redirect()->route('filament.member.pages.dashboard');
+            // Snapshot (form data)
+            'full_name'               => $data['full_name'],
+            'name_bn'                 => $data['name_bn'] ?? null,
+            'username'                => $data['username'],
+            'email'                   => $data['email'] ?? null,
+            'phone'                   => $data['phone'] ?? null,
+            'dob'                     => $data['dob'] ?? null,
+            'gender'                  => $data['gender'] ?? null,
+            'blood_group'             => $data['blood_group'] ?? null,
+            'id_number'               => $data['id_number'] ?? null,
+            'education_qualification' => $data['education_qualification'] ?? null,
+            'profession'              => $data['profession'] ?? null,
+            'other_expertise'         => $data['other_expertise'] ?? null,
+            'country'                 => $data['country'] ?? null,
+            'division'                => $data['division'] ?? null,
+            'district'                => $data['district'] ?? null,
+            'address'                 => $data['address'] ?? null,
+            'membership_type'         => $data['membership_type'],
+            'profile_pic'             => $profilePath,
+        ]);
+
+        // 6) Redirect to SSLCommerz init (init এখন শুধু tran_id নেয়)
+        return redirect()->route('sslc.init', [
+            'tran_id' => $payment->tran_id,
+        ]);
     }
 }
