@@ -8,6 +8,14 @@
         <div class="glass-morphism rounded-2xl p-8 shadow-xl border border-yellow-600/30">
             <h1 class="text-3xl font-extrabold text-gradient-yellow text-center mb-8">Join POJ Music Club</h1>
 
+            {{-- Success flash --}}
+            @if(session('success'))
+                <div class="mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            {{-- Validation errors --}}
             @if ($errors->any())
                 <div class="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                     <ul class="list-disc list-inside text-red-300 text-sm">
@@ -23,7 +31,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm text-gray-300 mb-1">Full Name<span class="text-yellow-500">*</span></label>
+                        <label class="block text-sm text-gray-300 mb-1">Full Name <span class="text-yellow-500">*</span></label>
                         <input type="text" name="full_name" value="{{ old('full_name') }}" required
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
@@ -35,7 +43,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm text-gray-300 mb-1">Username<span class="text-yellow-500">*</span></label>
+                        <label class="block text-sm text-gray-300 mb-1">Username <span class="text-yellow-500">*</span></label>
                         <input type="text" name="username" value="{{ old('username') }}" required
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
@@ -129,7 +137,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm text-gray-300 mb-1">Membership Type<span class="text-yellow-500">*</span></label>
+                        <label class="block text-sm text-gray-300 mb-1">Membership Type <span class="text-yellow-500">*</span></label>
                         <select name="membership_type" required
                                 class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                             @foreach (\Modules\Members\Models\Member::MEMBERSHIP_TYPES as $type)
@@ -142,6 +150,20 @@
                         <label class="block text-sm text-gray-300 mb-1">Profile Picture</label>
                         <input type="file" name="profile_pic" accept="image/*"
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-yellow-500 file:text-black file:font-semibold hover:file:bg-yellow-400">
+                    </div>
+
+                    {{-- Optional: Password fields (if you want to let users set it now) --}}
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Password (optional)</label>
+                        <input type="password" name="password"
+                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <p class="text-xs text-gray-400 mt-1">Leave blank to receive a temporary password.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Confirm Password (optional)</label>
+                        <input type="password" name="password_confirmation"
+                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
                 </div>
 

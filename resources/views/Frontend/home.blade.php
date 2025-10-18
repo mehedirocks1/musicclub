@@ -5,6 +5,9 @@
 @section('content')
     {{-- Hero + Sections --}}
     <section id="home" class="relative h-screen">
+        {{-- ✅ Three.js mount point --}}
+        <div id="three-canvas" class="absolute inset-0 z-0 pointer-events-none"></div>
+
         <!-- Hero Slider -->
         <div id="heroSlider" class="absolute inset-0 z-10">
             <!-- Slide 1 -->
@@ -62,24 +65,39 @@
                             <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 p-2 rounded-lg"><i class="fas fa-music text-black text-xl"></i></div>
                             <h3 class="text-2xl font-bold text-yellow-500" style="text-shadow: 0 0 20px rgba(234, 179, 8, 0.5);">Member Login</h3>
                         </div>
-                        <form class="space-y-4" action="#" method="post">
+
+                        {{-- ✅ ফর্ম: কমন লগইন রাউট + সঠিক name attrs --}}
+                        <form class="space-y-4" action="{{ route('login') }}" method="post">
                             @csrf
                             <div>
                                 <label for="email" class="block text-sm font-medium mb-2">Email Address</label>
-                                <input id="email" type="email" class="w-full px-4 py-3 bg-black/50 border border-emerald-700 rounded-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all" placeholder="your@email.com">
+                                <input id="email" name="email" type="email" value="{{ old('email') }}"
+                                       class="w-full px-4 py-3 bg-black/50 border border-emerald-700 rounded-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+                                       placeholder="your@email.com" required autofocus>
+                                @error('email') <p class="text-red-400 text-sm mt-1">{{ $message }}</p> @enderror
                             </div>
+
                             <div>
                                 <label for="password" class="block text-sm font-medium mb-2">Password</label>
-                                <input id="password" type="password" class="w-full px-4 py-3 bg-black/50 border border-emerald-700 rounded-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all" placeholder="••••••••">
+                                <input id="password" name="password" type="password"
+                                       class="w-full px-4 py-3 bg-black/50 border border-emerald-700 rounded-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all"
+                                       placeholder="••••••••" required>
+                                @error('password') <p class="text-red-400 text-sm mt-1">{{ $message }}</p> @enderror
                             </div>
+
                             <div class="flex items-center justify-between">
                                 <label class="flex items-center">
-                                    <input type="checkbox" class="w-4 h-4 rounded border-emerald-700 text-yellow-500 focus:ring-yellow-500">
+                                    <input type="checkbox" name="remember"
+                                           class="w-4 h-4 rounded border-emerald-700 text-yellow-500 focus:ring-yellow-500">
                                     <span class="ml-2 text-sm">Remember me</span>
                                 </label>
                                 <a href="#" class="text-sm text-yellow-500 hover:text-yellow-400">Forgot Password?</a>
                             </div>
-                            <button type="submit" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105" style="box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);">Login</button>
+
+                            <button type="submit" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105" style="box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);">
+                                Login
+                            </button>
+
                             <p class="text-center text-sm">Don't have an account?
                                 <a href="#" class="text-yellow-500 hover:text-yellow-400 font-semibold">Register Now</a>
                             </p>
@@ -95,7 +113,7 @@
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex space-x-2" id="sliderIndicators"></div>
     </section>
 
-    {{-- Placeholder Sections (IDs optional here since navbar uses # only) --}}
+    {{-- Placeholder Sections --}}
     <section class="py-20 bg-gradient-to-b from-black to-emerald-950">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-4xl font-bold mb-4 text-gradient-yellow text-shadow-yellow">About The Club</h2>
@@ -133,8 +151,6 @@
         </div>
     </section>
 
-    
-
     <section class="relative py-20 bg-black">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="text-4xl font-bold text-center mb-12 text-gradient-yellow text-shadow-yellow">Frequently Asked Questions</h2>
@@ -163,13 +179,21 @@
 @endsection
 
 @push('scripts')
+{{-- ✅ Three.js CDN (fallback সহ) --}}
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js" defer onload="window._threeLoaded=true"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Fallback: যদি THREE লোড না হয়, 3D স্কিপ করো
+    if (!window.THREE) {
+        console.warn('Three.js not loaded, skipping 3D background.');
+    }
+
     // === Three.js 3D Background ===
     let scene, camera, renderer, instruments = [];
     const container = document.getElementById('three-canvas');
 
     function initThree() {
+        if (!window.THREE || !container) return; // guard
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.z = 5;
@@ -219,10 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Body
         const bodyShape = new THREE.Shape();
         bodyShape.moveTo(0, -1);
-        bodyShape.bezierCurveTo( -0.8, -1.2, -0.8, 0, -0.6, 0.5);
-        bodyShape.bezierCurveTo( -0.5, 0.8, -0.2, 1, 0, 1.2);
-        bodyShape.bezierCurveTo( 0.2, 1, 0.5, 0.8, 0.6, 0.5);
-        bodyShape.bezierCurveTo( 0.8, 0, 0.8, -1.2, 0, -1);
+        bodyShape.bezierCurveTo(-0.8, -1.2, -0.8, 0, -0.6, 0.5);
+        bodyShape.bezierCurveTo(-0.5, 0.8, -0.2, 1, 0, 1.2);
+        bodyShape.bezierCurveTo(0.2, 1, 0.5, 0.8, 0.6, 0.5);
+        bodyShape.bezierCurveTo(0.8, 0, 0.8, -1.2, 0, -1);
         const extrudeSettings = { depth: 0.3, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2 };
         const bodyGeom = new THREE.ExtrudeGeometry(bodyShape, extrudeSettings);
         const body = new THREE.Mesh(bodyGeom, woodMaterial);
@@ -306,12 +330,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function onWindowResize() {
+        if (!renderer || !camera) return;
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     function animate() {
+        if (!renderer || !scene || !camera) return;
         requestAnimationFrame(animate);
         const time = Date.now() * 0.0005;
         instruments.forEach((inst, i) => {
@@ -381,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isExpanded = btn.getAttribute('aria-expanded') === 'true';
             content.classList.toggle('hidden');
             icon.classList.toggle('rotate-180');
-            btn.setAttribute('aria-expanded', !isExpanded);
+            btn.setAttribute('aria-expanded', String(!isExpanded));
         });
     });
 

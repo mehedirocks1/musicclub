@@ -3,7 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB; // <-- add this
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('email')->nullable()->unique();
             $table->string('phone', 20)->nullable()->unique();
 
+            // 🔐 Authentication
+            $table->string('password')->nullable(); //  
             // 👨‍👩 Family Info
             $table->string('father_name')->nullable();
             $table->string('mother_name')->nullable();
@@ -30,8 +32,8 @@ return new class extends Migration
             // 🎂 Personal Info
             $table->date('dob')->nullable();
             $table->string('id_number')->nullable();
-            $table->string('gender', 10)->nullable();       // Male/Female/Other
-            $table->string('blood_group', 3)->nullable();   // O+, A-, etc.
+            $table->string('gender', 10)->nullable();
+            $table->string('blood_group', 3)->nullable();
 
             // 🎓 Professional Info
             $table->string('education_qualification')->nullable();
@@ -55,12 +57,12 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            // (optional) light indexes
+            // Indexes
             $table->index('membership_type');
             $table->index('registration_date');
         });
 
-        // ✅ Add FK only (don't drop anything here)
+        // ✅ Add foreign key users.member_id → members.id
         Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'member_id')) {
                 $table->foreign('member_id')
@@ -72,7 +74,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Drop FK safely first, then drop members table
         if (Schema::hasTable('users') && Schema::hasColumn('users', 'member_id')) {
             try {
                 DB::statement('ALTER TABLE `users` DROP FOREIGN KEY `users_member_id_foreign`');
