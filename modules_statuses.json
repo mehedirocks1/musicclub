@@ -1,3 +1,6 @@
 {
-    "Members": true
+    "Members": true,
+    "Packages": true,
+    "Subscribers": true,
+    "Orders": true
 }

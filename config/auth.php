@@ -32,6 +32,8 @@ return [
             'driver' => 'session',
             'provider' => 'members',
         ],
+'subscriber' => ['driver' => 'session', 'provider' => 'subscribers'], 
+
     ],
 
     /*
@@ -54,11 +56,8 @@ return [
             'model'  => Modules\Members\Models\Member::class,
         ],
 
-        // Example (database provider, currently unused)
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table'  => 'users',
-        // ],
+        'subscribers' => ['driver' => 'eloquent', 'model' => Modules\Subscribers\Models\Subscriber::class], // ✅ new
+
     ],
 
     /*
@@ -83,6 +82,11 @@ return [
             'expire'   => 60,
             'throttle' => 60,
         ],
+'subscribers' => [
+        'provider' => 'subscribers', 'table' => 'password_reset_tokens',
+        'expire' => 60, 'throttle' => 60,
+    ],
+
     ],
 
     /*
