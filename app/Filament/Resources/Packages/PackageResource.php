@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Packages;
 
+use BackedEnum;
 use App\Filament\Resources\Packages\Pages\CreatePackage;
 use App\Filament\Resources\Packages\Pages\EditPackage;
 use App\Filament\Resources\Packages\Pages\ListPackages;
@@ -9,13 +10,10 @@ use App\Filament\Resources\Packages\Pages\ViewPackage;
 use Modules\Packages\Models\Package;
 
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;         // form/infolist এর জন্য
-use Filament\Tables\Table;           // table builder
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
 
-// Forms
 use Filament\Forms;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DateTimePicker;
@@ -24,8 +22,20 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 
-// Tables
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+
 use Filament\Tables;
+use Filament\Tables\Filters\TrashedFilter;
+
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -33,11 +43,10 @@ class PackageResource extends Resource
 {
     protected static ?string $model = Package::class;
 
-protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    // 🔶 MemberResource-এর মতো: form() = Schema + components()
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -65,7 +74,7 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
                                 ->numeric()
                                 ->minValue(0)
                                 ->required()
-                                ->prefix(fn ($get) => ($get('currency') ?: 'BDT')),
+                                ->prefix(fn ($get) => $get('currency') ?: 'BDT'),
 
                             Select::make('currency')
                                 ->options(['BDT' => 'BDT', 'USD' => 'USD'])
@@ -124,18 +133,27 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
                             ->rules(['dimensions:min_width=1200,min_height=675,ratio=16/9'])
                             ->helperText('16:9, min 1200×675'),
 
-                        TextInput::make('promo_video_url')->url()->label('Promo Video URL'),
+                        TextInput::make('promo_video_url')
+                            ->url()
+                            ->label('Promo Video URL'),
 
-                        Textarea::make('summary')->rows(2)->maxLength(300),
+                        Textarea::make('summary')
+                            ->rows(2)
+                            ->maxLength(300),
 
-                        RichEditor::make('description')->columnSpanFull(),
+                        RichEditor::make('description')
+                            ->columnSpanFull(),
 
                         Repeater::make('features')
-                            ->schema([ TextInput::make('value')->label('Feature') ])
+                            ->schema([
+                                TextInput::make('value')->label('Feature'),
+                            ])
                             ->collapsed(),
 
                         Repeater::make('prerequisites')
-                            ->schema([ TextInput::make('value')->label('Prerequisite') ])
+                            ->schema([
+                                TextInput::make('value')->label('Prerequisite'),
+                            ])
                             ->collapsed(),
                     ])
                     ->columns(1),
@@ -143,7 +161,6 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
             ->columns(3);
     }
 
-    // 🔶 MemberResource-এর মতো: table() = Table + Tables\Columns প্রিফিক্স
     public static function table(Table $table): Table
     {
         return $table
@@ -151,7 +168,7 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
                 Tables\Columns\ImageColumn::make('image_path')
                     ->label('Image')
                     ->square()
-                    ->defaultImageUrl(fn () => null),
+                    ->defaultImageUrl('/images/placeholder-16x9.png'),
 
                 Tables\Columns\TextColumn::make('code')
                     ->sortable()
@@ -161,15 +178,19 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
                 Tables\Columns\TextColumn::make('name')
                     ->sortable()
                     ->searchable()
-                    ->limit(30),
+                    ->limit(30)
+                    ->url(fn ($record) => static::getUrl('view', ['record' => $record]))
+                    ->openUrlInNewTab(false),
 
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'draft',
-                        'success' => 'active',
-                        'gray'    => 'paused',
-                        'danger'  => 'retired',
-                    ])
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'draft'   => 'warning',
+                        'active'  => 'success',
+                        'paused'  => 'gray',
+                        'retired' => 'danger',
+                        default   => 'gray',
+                    })
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('billing_period')
@@ -177,39 +198,52 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('price')
-                    ->money(fn ($record) => $record->currency ?: 'BDT', true)
+                    ->money(fn ($record) => $record->currency ?: 'BDT', false)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('sale_starts_at')->dateTime()->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('sale_ends_at')->dateTime()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('sale_starts_at')
+                    ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('updated_at')->since(),
+                Tables\Columns\TextColumn::make('sale_ends_at')
+                    ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->since(),
             ])
             ->defaultSort('updated_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'active' => 'Active',
-                        'paused' => 'Paused',
-                        'retired' => 'Retired',
-                    ]),
-                Tables\Filters\SelectFilter::make('billing_period')
-                    ->options([
-                        'one_time' => 'One time',
-                        'monthly'  => 'Monthly',
-                        'yearly'   => 'Yearly',
-                    ]),
-                Tables\Filters\TrashedFilter::make(), // যদি SoftDeletes আছে
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Tables\Filters\SelectFilter::make('status')->options([
+                    'draft'   => 'Draft',
+                    'active'  => 'Active',
+                    'paused'  => 'Paused',
+                    'retired' => 'Retired',
                 ]),
+                Tables\Filters\SelectFilter::make('billing_period')->options([
+                    'one_time' => 'One time',
+                    'monthly'  => 'Monthly',
+                    'yearly'   => 'Yearly',
+                ]),
+                TrashedFilter::make(),
+            ])
+            ->recordActions([
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
+            ])
+            ->headerActions([
+                CreateAction::make(),
+            ])
+            ->toolbarActions([
+                BulkAction::make('delete-selected')
+                    ->label('Delete selected')
+                    ->requiresConfirmation()
+                    ->action(function (\Illuminate\Support\Collection $records) {
+                        $records->each->delete();
+                    }),
             ]);
     }
 
@@ -223,7 +257,6 @@ protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-
         ];
     }
 
-    // (Members-এর মতো soft delete scope ছাড়া route binding করতে চাইলে)
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()

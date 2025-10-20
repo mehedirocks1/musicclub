@@ -30,7 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web') // ✅ Admin panel-এর জন্য users/web guard ব্যবহার করুন
-
+            //->maxContentWidth('full')
             ->colors([
                 'primary' => Color::Amber,
             ])
