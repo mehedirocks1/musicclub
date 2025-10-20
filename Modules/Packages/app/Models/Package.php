@@ -5,16 +5,11 @@ namespace Modules\Packages\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction; 
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 
 class Package extends Model
 {
-    use SoftDeletes;
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'code','name','slug','status','price','currency','billing_period',
         'access_duration_days','sale_starts_at','sale_ends_at','image_path','promo_video_url',
@@ -24,9 +19,22 @@ class Package extends Model
     ];
 
     protected $casts = [
-        'features' => 'array',
-        'prerequisites' => 'array',
-        'sale_starts_at' => 'datetime',
-        'sale_ends_at' => 'datetime',
+        'features'              => 'array',
+        'prerequisites'         => 'array',
+        'sale_starts_at'        => 'datetime',
+        'sale_ends_at'          => 'datetime',
+        'price'                 => 'decimal:2',
+        'rating_avg'            => 'decimal:2',
+        'tax_rate'              => 'decimal:2',
+        'is_discountable'       => 'boolean',
+        'access_duration_days'  => 'integer',
+        'enrollments_count'     => 'integer',
+        'sort_order'            => 'integer',
     ];
+
+    // শুধু slug binding — এটা স্ট্যান্ডার্ড, রেখে দিলাম
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
 }

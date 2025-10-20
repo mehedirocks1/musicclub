@@ -1,12 +1,14 @@
 <?php
 namespace Modules\Orders\Http\Controllers;
+use Illuminate\Routing\Controller;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Raziul\Sslcommerz\Facades\Sslcommerz;
-use App\Models\MemberPayment;
-use Modules\Members\Models\Member;
+use Illuminate\Support\Str;                 // ট্রানজ্যাকশন/সেশন আইডি জেনারেট করতে
+use Illuminate\Support\Facades\Log;         // ডিবাগ লগ
+use Illuminate\Support\Facades\DB;          // DB::transaction ইত্যাদি (যদি ব্যবহার করো)
+use Raziul\Sslcommerz\Facades\Sslcommerz;   // SSLCommerz গেটওয়ে
+use App\Models\MemberPayment;               // তোমার পেমেন্ট মডেল (পাথ ঠিক আছে তো?)
+use Modules\Members\Models\Member;   
 use DevWizard\Textify\Facades\Textify;   // ADD ONLY
 
 

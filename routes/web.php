@@ -8,6 +8,10 @@ use \Raziul\Sslcommerz\Facades\Sslcommerz;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use DevWizard\Textify\Facades\Textify;   // ADD ONLY
 use Illuminate\Support\Str; 
+use Modules\Packages\Models\Package;
+
+
+
 Route::view('/', 'Frontend.home')->name('home');
 Route::view('/about', 'Frontend.about')->name('about');
 Route::view('/branch', 'Frontend.branch')->name('branch');
@@ -31,3 +35,4 @@ Route::match(['GET','POST'],'sslcommerz/success',[SslcommerzController::class,'s
 Route::match(['GET','POST'],'sslcommerz/failure',[SslcommerzController::class,'failure'])->name('sslc.failure')->withoutMiddleware([VerifyCsrfToken::class]);
 Route::match(['GET','POST'],'sslcommerz/cancel',[SslcommerzController::class,'cancel'])->name('sslc.cancel')->withoutMiddleware([VerifyCsrfToken::class]);
 Route::post('sslcommerz/ipn',[SslcommerzController::class,'ipn'])->name('sslc.ipn')->withoutMiddleware([VerifyCsrfToken::class]);
+

@@ -73,7 +73,7 @@
                     <a href="#" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Login</a>
                     <a href="{{ route('register') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Registration</a>
                     <a href="#" class="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg" style="box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);">Subscribe</a>
-                    <a href="#" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-600 text-white font-bold hover:from-emerald-600 hover:to-emerald-500 transition-all transform hover:scale-105 shadow-lg" style="box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">Buy Packages</a>
+                    <a href="{{ route('frontend.packages.index') }}" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-600 text-white font-bold hover:from-emerald-600 hover:to-emerald-500 transition-all transform hover:scale-105 shadow-lg" style="box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">Buy Packages</a>
                 </div>
 
                 <button id="mobileMenuBtn" aria-label="Toggle mobile menu" class="lg:hidden p-2 rounded-lg hover:bg-emerald-900/50 transition-all">
@@ -90,7 +90,7 @@
                 <a href="#" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Login</a>
                 <a href="#" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Registration</a>
                 <a href="#" class="block px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-semibold">Subscribe</a>
-                <a href="#" class="block px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-600 text-white font-semibold">Buy Packages</a>
+                <a href="{{ route('frontend.packages.index') }}" class="block px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-600 text-white font-semibold">Buy Packages</a>
             </div>
         </nav>
     </header>

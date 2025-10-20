@@ -2,62 +2,68 @@
 
 namespace Modules\Packages\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Modules\Packages\Models\Package;
 
 class PackagesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
- public function index()
+    public function index()
     {
-        $packages = Package::where('status','active')
-            ->where('visibility','public')
-            ->orderBy('sort_order')->paginate(12);
+        $nowUtc = now()->utc(); // DB timestamps are UTC
 
-        return view('packages::index', compact('packages'));
+        $packages = Package::query()
+            ->where('status', 'active')
+            ->where('visibility', 'public')
+            // 🔑 শুধু expire হয়নি এমন প্যাকেজ দেখাও (upcoming + running)
+            ->where(function ($q) use ($nowUtc) {
+                $q->whereNull('sale_ends_at')
+                  ->orWhere('sale_ends_at', '>=', $nowUtc);
+            })
+            ->orderByRaw("FIELD(billing_period, 'one_time','monthly','yearly')")
+            ->orderBy('price')
+            ->paginate(12)
+            ->withQueryString();
+
+        return view('Frontend.packages', compact('packages'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show(Package $package)
     {
-        return view('packages::create');
+        $nowUtc = now()->utc();
+
+        $isPublicActive = ($package->status === 'active')
+            && ($package->visibility === 'public')
+            && is_null($package->deleted_at);
+
+        $inWindowToBuy =
+            (is_null($package->sale_starts_at) || $package->getRawOriginal('sale_starts_at') <= $nowUtc) &&
+            (is_null($package->sale_ends_at)   || $package->getRawOriginal('sale_ends_at')   >= $nowUtc);
+
+        abort_unless($isPublicActive, 404);
+
+        // চাইলে blade-এ বাটন ডিসেবল করতে এই ভ্যার পাঠাতে পারো
+        return view('Frontend.package-show', [
+            'package' => $package,
+            'canBuy'  => $inWindowToBuy,
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-public function show(string $slug)
+    public function buy(Request $request, Package $package)
     {
-        $package = Package::where('slug',$slug)
-            ->where('status','active')->firstOrFail();
+        $nowUtc = now()->utc();
 
-        return view('packages::show', compact('package'));
+        $ok =
+            ($package->status === 'active') &&
+            ($package->visibility === 'public') &&
+            (is_null($package->sale_starts_at) || $package->getRawOriginal('sale_starts_at') <= $nowUtc) &&
+            (is_null($package->sale_ends_at)   || $package->getRawOriginal('sale_ends_at')   >= $nowUtc) &&
+            is_null($package->deleted_at);
+
+        abort_unless($ok, 404);
+
+        return redirect()
+            ->route('frontend.packages.index')
+            ->with('success', "Proceed to buy: {$package->name} ({$package->currency} " . number_format($package->price, 2) . ")");
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
-    {
-        return view('packages::edit');
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
 }
