@@ -125,7 +125,9 @@ class PackageResource extends Resource
 
                         FileUpload::make('image_path')
                             ->label('Package Image')
-                            ->directory('packages')
+                            ->disk('public')                 // public disk
+                            ->directory('packages')          // storage/app/public/packages
+                            ->visibility('public')
                             ->image()
                             ->imageEditor()
                             ->imageResizeMode('cover')

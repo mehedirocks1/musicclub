@@ -1,6 +1,5 @@
 @extends('Frontend.layout')
 
-
 @section('title', 'Packages')
 
 @section('content')
@@ -80,13 +79,11 @@
                                 Details
                             </a>
 
-                            <form action="{{ route('frontend.packages.buy', $package->slug) }}" method="POST" class="inline">
-                                @csrf
-                                <button type="submit"
-                                        class="inline-flex w-full items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus:outline-none">
-                                    Buy
-                                </button>
-                            </form>
+                            {{-- Buy now opens the registration form (GET) --}}
+                            <a href="{{ route('frontend.packages.buy.form', $package->slug) }}"
+                               class="inline-flex w-full items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus:outline-none">
+                                Buy
+                            </a>
                         </div>
                     </div>
                 </div>
