@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Carbon;
 use Modules\Packages\Models\Package;
 use Modules\Subscribers\Models\Subscriber;
+use App\Http\Controllers\SslCommerzPaymentController;
 
 class PackagesController extends Controller
 {
@@ -152,6 +153,6 @@ class PackagesController extends Controller
             'updated_at'              => now(),
         ]);
 
-        return redirect()->route('ssl.init', ['tran_id' => $tranId]);
+        return redirect()->route('sslc.init', ['tran_id' => $tranId]);
     }
 }

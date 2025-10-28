@@ -1,4 +1,4 @@
-@extends('Frontend.layout')
+@extends('frontend.layout')
 
 @section('title', 'Buy: ' . $package->name)
 

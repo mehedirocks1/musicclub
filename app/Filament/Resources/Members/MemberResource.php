@@ -18,6 +18,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Section; // ⬅️ Added Section for better layout control
+// Ensure you have the correct namespace for Spanning columns:
+use Filament\Forms\Components\Component; 
 
 class MemberResource extends Resource
 {
@@ -31,91 +34,113 @@ class MemberResource extends Resource
     {
         return $schema
             ->components([
-                FileUpload::make('profile_pic')
-                    ->label('Profile Picture')
-                    ->image()
-                    ->directory('members/profile_pics'),
+                // Use a Section for better grouping and to apply column spans easily
+                Section::make('Profile Information')
+                    ->schema([
+                        FileUpload::make('profile_pic')
+                            ->label('Profile Picture')
+                            ->image()
+                            ->directory('members/profile_pics')
+                            ->columnSpan('full'), // ⬅️ Full Width
+                            
+                        TextInput::make('member_id')
+                            ->label('Member ID')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->maxLength(50),
 
-                TextInput::make('member_id')
-                    ->label('Member ID')
-                    ->required()
-                    ->unique(ignoreRecord: true)
-                    ->maxLength(50),
+                        TextInput::make('username')
+                            ->label('Username')
+                            ->required()
+                            ->maxLength(50),
 
-                TextInput::make('username')
-                    ->label('Username')
-                    ->required()
-                    ->maxLength(50),
+                        TextInput::make('full_name')
+                            ->label('Full Name')
+                            ->required()
+                            ->maxLength(255)
+                            ->columnSpan('full'), // ⬅️ Full Width
 
-                TextInput::make('full_name')
-                    ->label('Full Name')
-                    ->required()
-                    ->maxLength(255),
+                        TextInput::make('name_bn')
+                            ->label('Name (Bangla)')
+                            ->maxLength(255)
+                            ->columnSpan('full'), // ⬅️ Full Width
+                    ])->columns(2),
 
-                TextInput::make('name_bn')
-                    ->label('Name (Bangla)')
-                    ->maxLength(255),
+                Section::make('Contact & Vitals')
+                    ->schema([
+                        TextInput::make('email')
+                            ->email()
+                            ->maxLength(255),
 
-                TextInput::make('email')
-                    ->email()
-                    ->maxLength(255),
+                        TextInput::make('phone')
+                            ->label('Phone')
+                            ->tel()
+                            ->maxLength(20),
 
-                TextInput::make('phone')
-                    ->label('Phone')
-                    ->tel()
-                    ->maxLength(20),
+                        DatePicker::make('dob')
+                            ->label('Date of Birth'),
 
-                TextInput::make('father_name')
-                    ->maxLength(255),
+                        TextInput::make('id_number')
+                            ->label('NID / Passport / Student ID')
+                            ->maxLength(100),
 
-                TextInput::make('mother_name')
-                    ->maxLength(255),
+                        Select::make('gender')
+                            ->options(array_combine(Member::GENDERS, Member::GENDERS))
+                            ->searchable(),
 
-                DatePicker::make('dob')
-                    ->label('Date of Birth'),
+                        Select::make('blood_group')
+                            ->options(array_combine(Member::BLOOD_GROUPS, Member::BLOOD_GROUPS))
+                            ->searchable(),
+                    ])->columns(2),
 
-                TextInput::make('id_number')
-                    ->label('NID / Passport / Student ID')
-                    ->maxLength(100),
+                Section::make('Family')
+                    ->schema([
+                        TextInput::make('father_name')
+                            ->maxLength(255)
+                            ->columnSpan('full'), // ⬅️ Full Width
 
-                Select::make('gender')
-                    ->options(array_combine(Member::GENDERS, Member::GENDERS))
-                    ->searchable(),
+                        TextInput::make('mother_name')
+                            ->maxLength(255)
+                            ->columnSpan('full'), // ⬅️ Full Width
+                    ])->columns(1),
 
-                Select::make('blood_group')
-                    ->options(array_combine(Member::BLOOD_GROUPS, Member::BLOOD_GROUPS))
-                    ->searchable(),
+                Section::make('Education & Profession')
+                    ->schema([
+                        TextInput::make('education_qualification')
+                            ->label('Education Qualification'),
 
-                TextInput::make('education_qualification')
-                    ->label('Education Qualification'),
+                        TextInput::make('profession'),
 
-                TextInput::make('profession'),
+                        TextInput::make('other_expertise')
+                            ->label('Other Expertise')
+                            ->columnSpan('full'), // ⬅️ Full Width
+                    ])->columns(2),
 
-                TextInput::make('other_expertise')
-                    ->label('Other Expertise'),
+                Section::make('Location & Membership')
+                    ->schema([
+                        TextInput::make('country')->default('Bangladesh'),
+                        TextInput::make('division'),
+                        TextInput::make('district'),
+                        Textarea::make('address')
+                            ->columnSpan('full'), // ⬅️ Full Width
 
-                TextInput::make('country')->default('Bangladesh'),
-                TextInput::make('division'),
-                TextInput::make('district'),
-                Textarea::make('address'),
+                        Select::make('membership_type')
+                            ->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES))
+                            ->required(),
 
-                Select::make('membership_type')
-                    ->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES))
-                    ->required(),
+                        DatePicker::make('registration_date')
+                            ->label('Registration Date')
+                            ->default(now()),
 
-                DatePicker::make('registration_date')
-                    ->label('Registration Date')
-                    ->default(now()),
-
-                TextInput::make('balance')
-                    ->numeric()
-                    ->default(0.00)
-                    ->prefix('৳'),
+                        TextInput::make('balance')
+                            ->numeric()
+                            ->default(0.00)
+                            ->prefix('৳'),
+                    ])->columns(3),
             ])
-            ->columns(3);
+            ->columns(1); // ⬅️ Set the main Schema to 1 column for full width flow
     }
-
-    public static function table(Table $table): Table
+public static function table(Table $table): Table
     {
         return $table
             ->columns([
@@ -123,6 +148,7 @@ class MemberResource extends Resource
                 TextColumn::make('member_id')->sortable()->searchable(),
                 TextColumn::make('full_name')->sortable()->searchable(),
                 TextColumn::make('phone')->label('Phone'),
+                TextColumn::make('district')->sortable()->searchable(), 
                 TextColumn::make('membership_type')->badge()->color(fn ($state) => match ($state) {
                     'Student' => 'info',
                     'General' => 'gray',
@@ -137,14 +163,24 @@ class MemberResource extends Resource
                 Tables\Filters\SelectFilter::make('membership_type')
                     ->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES)),
             ])
-           ;
+            ->actions([
+                // ✅ CORRECTED NAMESPACE: Use Filament\Actions\ActionGroup
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
+                ])->label('Actions'),
+            ])
+            ->bulkActions([
+                \Filament\Actions\DeleteBulkAction::make(),
+            ]);
     }
-
     public static function getPages(): array
     {
         return [
             'index'  => ListMembers::route('/'),
             'create' => CreateMember::route('/create'),
+            'view'   => ViewMember::route('/{record}'),
             'edit'   => EditMember::route('/{record}/edit'),
         ];
     }

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Subscribers;
 
+// === CORRECTED MODEL IMPORT based on your modular structure ===
+use Modules\Subscribers\Models\Subscriber;
+
+use App\Filament\Resources\Subscribers\Schemas\SubscriberInfolist;
 use App\Filament\Resources\Subscribers\Pages\CreateSubscriber;
 use App\Filament\Resources\Subscribers\Pages\EditSubscriber;
 use App\Filament\Resources\Subscribers\Pages\ListSubscribers;
 use App\Filament\Resources\Subscribers\Pages\ViewSubscriber;
-use App\Filament\Resources\Subscribers\Schemas\SubscriberInfolist;
-use App\Models\Subscriber;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -17,15 +19,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 // === REQUIRED IMPORTS FOR FORM COMPONENTS ===
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
-// If the table uses these, ensure they are imported
+// Table Columns
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables;
-
 
 class SubscriberResource extends Resource
 {
@@ -35,32 +34,55 @@ class SubscriberResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'full_name';
 
-    // ✅ FIX: Signature updated to use Schema, compatible with Filament v3/v4
+    /**
+     * The form method uses the Schema signature introduced in v4.
+     */
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([ // Use ->components() for the main Schema container
+        return $schema->components([
             Section::make('Profile')->schema([
-                TextInput::make('subscriber_id')->unique(ignoreRecord: true)->required(),
-                TextInput::make('username')->unique(ignoreRecord: true)->required(),
-                TextInput::make('full_name')->required(),
-                TextInput::make('email')->email()->unique(ignoreRecord: true),
-                TextInput::make('phone')->tel()->unique(ignoreRecord: true),
-                TextInput::make('password')->password()->dehydrateStateUsing(fn($s)=>$s? bcrypt($s):null)->nullable(),
+                TextInput::make('subscriber_id')
+                    ->unique(ignoreRecord: true)
+                    ->required(),
+                TextInput::make('username')
+                    ->unique(ignoreRecord: true)
+                    ->required(),
+                TextInput::make('full_name')
+                    ->required(),
+                TextInput::make('email')
+                    ->email()
+                    ->unique(ignoreRecord: true),
+                TextInput::make('phone')
+                    ->tel()
+                    ->unique(ignoreRecord: true),
+                TextInput::make('password')
+                    ->password()
+                    ->dehydrateStateUsing(fn($s) => $s ? bcrypt($s) : null)
+                    ->nullable()
+                    ->hiddenOn('edit'),
             ])->columns(2),
+
             Section::make('Details')->schema([
                 DatePicker::make('dob'),
-                Select::make('gender')->options(['Male'=>'Male','Female'=>'Female','Other'=>'Other']),
+                Select::make('gender')
+                    ->options(['Male' => 'Male', 'Female' => 'Female', 'Other' => 'Other']),
                 TextInput::make('profession'),
-                TextInput::make('country')->default('Bangladesh'),
+                TextInput::make('country')
+                    ->default('Bangladesh'),
                 TextInput::make('division'),
                 TextInput::make('district'),
                 TextInput::make('address'),
             ])->columns(2),
+
             Section::make('Lifecycle')->schema([
-                Select::make('plan')->options(['monthly'=>'Monthly','yearly'=>'Yearly'])->nullable(),
-                Select::make('status')->options([
-                    'pending'=>'Pending','active'=>'Active','expired'=>'Expired','inactive'=>'Inactive'
-                ])->default('pending'),
+                Select::make('plan')
+                    ->options(['monthly' => 'Monthly', 'yearly' => 'Yearly'])
+                    ->nullable(),
+                Select::make('status')
+                    ->options([
+                        'pending' => 'Pending', 'active' => 'Active', 'expired' => 'Expired', 'inactive' => 'Inactive'
+                    ])
+                    ->default('pending'),
                 DatePicker::make('started_at'),
                 DatePicker::make('expires_at'),
             ])->columns(2),
@@ -78,15 +100,29 @@ class SubscriberResource extends Resource
             TextColumn::make('subscriber_id')->badge(),
             TextColumn::make('full_name')->searchable(),
             TextColumn::make('email')->searchable(),
-            BadgeColumn::make('status')->colors([
-                'warning'=>'pending','success'=>'active','danger'=>'expired','gray'=>'inactive'
-            ]),
+            // Badge column implementation using TextColumn with conditional coloring (v4 style)
+            TextColumn::make('status')
+                ->badge()
+                ->color(fn (string $state): string => match ($state) {
+                    'pending' => 'warning',
+                    'active'  => 'success',
+                    'expired' => 'danger',
+                    default   => 'gray',
+                }),
             TextColumn::make('plan')->badge(),
             TextColumn::make('expires_at')->date(),
             TextColumn::make('updated_at')->since(),
-        ])->defaultSort('updated_at','desc')
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
+        ])
+        ->defaultSort('updated_at', 'desc')
+        ->actions([
+            // Fixed namespace to Filament\Actions\EditAction (v3/v4)
+            \Filament\Actions\EditAction::make(),
+            \Filament\Actions\ViewAction::make(),
+        ])
+        ->bulkActions([
+            // Fixed namespace to Filament\Actions\DeleteBulkAction (v3/v4)
+            \Filament\Actions\DeleteBulkAction::make(),
+        ]);
     }
 
     public static function getRelations(): array
@@ -99,10 +135,10 @@ class SubscriberResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListSubscribers::route('/'),
+            'index'  => ListSubscribers::route('/'),
             'create' => CreateSubscriber::route('/create'),
-            'view' => ViewSubscriber::route('/{record}'),
-            'edit' => EditSubscriber::route('/{record}/edit'),
+            'view'   => ViewSubscriber::route('/{record}'),
+            'edit'   => EditSubscriber::route('/{record}/edit'),
         ];
     }
 

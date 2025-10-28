@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Packages\Http\Controllers\PackagesController;
-
+use App\Http\Controllers\SslCommerzPaymentController;
 // ✅ public routes for Packages module
 Route::prefix('packages')->name('frontend.packages.')->group(function () {
     Route::get('/', [PackagesController::class, 'index'])->name('index');

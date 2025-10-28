@@ -6,32 +6,37 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('member_payments', function (Blueprint $t) {
             $t->id();
+
+            // members relation (this one is OK if members table already exists)
             $t->foreignId('member_id')
-    ->nullable()
-    ->constrained('members')
-    ->cascadeOnDelete();
+                ->nullable()
+                ->constrained('members')
+                ->cascadeOnDelete();
 
+            // DO NOT constrain here; just a nullable column + index
+            $t->unsignedBigInteger('package_id')->nullable();
+            $t->index('package_id');
 
-            // ট্রানজ্যাকশন তথ্য
+            // Optional package snapshot
+            $t->string('package_name')->nullable();
+
+            // Transaction info
             $t->string('tran_id')->unique();
-            $t->enum('plan', ['monthly', 'yearly']);
+            $t->enum('plan', ['monthly', 'yearly'])->nullable();
             $t->decimal('amount', 12, 2);
             $t->string('currency', 8)->default('BDT');
-            $t->enum('status', ['pending', 'paid', 'failed', 'cancelled', 'validation_failed'])->default('pending');
+            $t->enum('status', ['pending','paid','failed','cancelled','validation_failed'])->default('pending');
 
-            // গেটওয়ে রেসপন্স ফিল্ড
+            // Gateway response
             $t->string('bank_tran_id')->nullable();
             $t->string('val_id')->nullable();
             $t->string('card_type')->nullable();
 
-            // --- মেম্বার স্ন্যাপশট ---
+            // Member snapshot
             $t->string('full_name')->nullable();
             $t->string('name_bn')->nullable();
             $t->string('username')->nullable();
@@ -49,22 +54,22 @@ return new class extends Migration
             $t->string('district')->nullable();
             $t->text('address')->nullable();
             $t->string('membership_type')->nullable();
-
-            // প্রোফাইল পিকচার (যদি থাকে)
             $t->string('profile_pic')->nullable();
 
-            // গেটওয়ে পেলোড ও মেটাডাটা
+            // Gateway payload
             $t->json('gateway_payload')->nullable();
 
-            // ✅ SoftDeletes + timestamps
+            // Meta
             $t->softDeletes();
             $t->timestamps();
+
+            // Helpful indexes
+            $t->index(['member_id']);
+            $t->index(['status', 'plan']);
+            $t->index(['tran_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('member_payments');

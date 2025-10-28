@@ -8,12 +8,12 @@ use App\Filament\Resources\Packages\Pages\EditPackage;
 use App\Filament\Resources\Packages\Pages\ListPackages;
 use App\Filament\Resources\Packages\Pages\ViewPackage;
 use Modules\Packages\Models\Package;
-
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-
-use Filament\Forms;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Livewire\Component as Livewire;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DateTimePicker;
@@ -21,14 +21,17 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms; // Import for Forms namespace
 
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 
 use Filament\Tables;
 use Filament\Tables\Filters\TrashedFilter;
 
-use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
@@ -38,6 +41,7 @@ use Filament\Actions\ViewAction;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str; // Import for Str helper
 
 class PackageResource extends Resource
 {
@@ -51,116 +55,185 @@ class PackageResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Basic')
+                Section::make('Package Details')
+                    ->description('Main content and descriptive fields for the package')
                     ->schema([
-                        Grid::make(3)->schema([
-                            TextInput::make('code')
-                                ->label('Code')
-                                ->required()
-                                ->unique(ignoreRecord: true),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Package Name')
+                                    ->placeholder('e.g. Professional Music Production')
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => 
+                                        $operation === 'create' ? $set('slug', Str::slug($state)) : null
+                                    ),
 
-                            TextInput::make('name')
-                                ->label('Name')
-                                ->required(),
+                                TextInput::make('slug')
+                                    ->label('Slug')
+                                    ->placeholder('auto-generated from name')
+                                    ->required()
+                                    ->unique(ignoreRecord: true),
+                            ]),
 
-                            TextInput::make('slug')
-                                ->label('Slug')
-                                ->required()
-                                ->unique(ignoreRecord: true),
-                        ]),
+                        Textarea::make('summary')
+                            ->label('Short Summary')
+                            ->placeholder('One or two lines summary for listings')
+                            ->rows(3)
+                            ->maxLength(300),
 
-                        Grid::make(3)->schema([
-                            TextInput::make('price')
-                                ->numeric()
-                                ->minValue(0)
-                                ->required()
-                                ->prefix(fn ($get) => $get('currency') ?: 'BDT'),
+                        RichEditor::make('description')
+                            ->label('Full Description')
+                            ->toolbarButtons([
+                                'bold', 'italic', 'underline', 'bulletList', 
+                                'orderedList', 'link', 'codeBlock'
+                            ])
+                            ->placeholder('Describe what the package contains, outcomes and who it is for'),
+                    ]),
 
-                            Select::make('currency')
-                                ->options(['BDT' => 'BDT', 'USD' => 'USD'])
-                                ->default('BDT')
-                                ->required(),
+                Section::make('Configuration')
+                    ->description('Package settings')
+                    ->columns(3)
+                    ->schema([
+                        TextInput::make('code')
+                            ->label('Package Code')
+                            ->placeholder('e.g. PM-001')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Unique identifier for billing'),
 
-                            Select::make('billing_period')
-                                ->options([
-                                    'one_time' => 'One time',
-                                    'monthly'  => 'Monthly',
-                                    'yearly'   => 'Yearly',
-                                ])
-                                ->default('one_time')
-                                ->required(),
-                        ]),
+                        Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'draft'   => 'Draft',
+                                'active'  => 'Active',
+                                'paused'  => 'Paused',
+                                'retired' => 'Retired',
+                            ])
+                            ->default('draft')
+                            ->required()
+                            ->searchable(),
 
-                        Grid::make(3)->schema([
-                            TextInput::make('access_duration_days')
-                                ->numeric()
-                                ->minValue(1)
-                                ->visible(fn ($get) => $get('billing_period') === 'one_time')
-                                ->helperText('One-time package মেয়াদ (দিন)'),
+                        Select::make('visibility')
+                            ->label('Visibility')
+                            ->options([
+                                'public'   => 'Public',
+                                'unlisted' => 'Unlisted',
+                                'archived' => 'Archived',
+                            ])
+                            ->default('public')
+                            ->required()
+                            ->helperText('Controls public listing visibility'),
+                    ]),
 
-                            Select::make('status')
-                                ->options([
-                                    'draft'   => 'Draft',
-                                    'active'  => 'Active',
-                                    'paused'  => 'Paused',
-                                    'retired' => 'Retired',
-                                ])
-                                ->default('draft')
-                                ->required(),
-
-                            Select::make('visibility')
-                                ->options([
-                                    'public'   => 'Public',
-                                    'unlisted' => 'Unlisted',
-                                    'archived' => 'Archived',
-                                ])
-                                ->default('public')
-                                ->required(),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            DateTimePicker::make('sale_starts_at')->label('Sale starts'),
-                            DateTimePicker::make('sale_ends_at')->label('Sale ends'),
-                        ]),
-
+                Section::make('Media')
+                    ->description('Images and promotional content')
+                    ->columns(2)
+                    ->schema([
                         FileUpload::make('image_path')
                             ->label('Package Image')
-                            ->disk('public')                 // public disk
-                            ->directory('packages')          // storage/app/public/packages
+                            ->disk('public')
+                            ->directory('packages')
                             ->visibility('public')
                             ->image()
                             ->imageEditor()
                             ->imageResizeMode('cover')
                             ->imageCropAspectRatio('16:9')
                             ->rules(['dimensions:min_width=1200,min_height=675,ratio=16/9'])
-                            ->helperText('16:9, min 1200×675'),
+                            ->helperText('16:9 aspect ratio — minimum 1200×675px'),
 
                         TextInput::make('promo_video_url')
+                            ->label('Promo Video URL')
                             ->url()
-                            ->label('Promo Video URL'),
+                            ->placeholder('https://youtu.be/your-promo')
+                            ->helperText('Optional embeddable video link'),
+                    ]),
 
-                        Textarea::make('summary')
-                            ->rows(2)
-                            ->maxLength(300),
+                Section::make('Additional Information')
+                    ->schema([
+                        Tabs::make('Details')
+                            ->tabs([
+                                Tab::make('Features')
+                                    ->schema([
+                                        Repeater::make('features')
+                                            ->label('Package Features')
+                                            ->schema([
+                                                TextInput::make('value')
+                                                    ->label('Feature')
+                                                    ->placeholder('e.g. Certificate of Completion')
+                                                    ->required(),
+                                            ])
+                                            ->collapsed()
+                                            ->defaultItems(1)
+                                            ->addActionLabel('Add Feature'),
+                                    ]),
 
-                        RichEditor::make('description')
-                            ->columnSpanFull(),
+                                Tab::make('Prerequisites')
+                                    ->schema([
+                                        Repeater::make('prerequisites')
+                                            ->label('Prerequisites')
+                                            ->schema([
+                                                TextInput::make('value')
+                                                    ->label('Prerequisite')
+                                                    ->placeholder('e.g. Basic music theory')
+                                                    ->required(),
+                                            ])
+                                            ->collapsed()
+                                            ->defaultItems(1)
+                                            ->addActionLabel('Add Prerequisite'),
+                                    ]),
+                            ]),
+                    ]),
 
-                        Repeater::make('features')
+                Section::make('Pricing & Billing')
+                    ->description('Set pricing and billing configuration')
+                    ->schema([
+                        Grid::make(4)
                             ->schema([
-                                TextInput::make('value')->label('Feature'),
-                            ])
-                            ->collapsed(),
+                                TextInput::make('price')
+                                    ->label('Price')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->required()
+                                    ->prefix(fn ($get) => $get('currency') ?: 'BDT')
+                                    ->placeholder('0.00'),
 
-                        Repeater::make('prerequisites')
+                                Select::make('currency')
+                                    ->label('Currency')
+                                    ->options(['BDT' => 'BDT', 'USD' => 'USD'])
+                                    ->default('BDT')
+                                    ->required(),
+
+                                Select::make('billing_period')
+                                    ->label('Billing Period')
+                                    ->options([
+                                        'one_time' => 'One Time',
+                                        'monthly'  => 'Monthly',
+                                        'yearly'   => 'Yearly',
+                                    ])
+                                    ->default('one_time')
+                                    ->required()
+                                    ->reactive(),
+
+                                TextInput::make('access_duration_days')
+                                    ->label('Access Duration (days)')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->visible(fn ($get) => $get('billing_period') === 'one_time')
+                                    ->helperText('Duration for one-time packages')
+                                    ->placeholder('30'),
+                            ]),
+
+                        Grid::make(2)
                             ->schema([
-                                TextInput::make('value')->label('Prerequisite'),
-                            ])
-                            ->collapsed(),
-                    ])
-                    ->columns(1),
-            ])
-            ->columns(3);
+                                DateTimePicker::make('sale_starts_at')
+                                    ->label('Sale Starts At'),
+
+                                DateTimePicker::make('sale_ends_at')
+                                    ->label('Sale Ends At'),
+                            ]),
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -261,7 +334,7 @@ class PackageResource extends Resource
 
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
-        return parent::getRecordRouteBindingEloquentQuery()
+        return parent::getRecordRouteBindingQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
