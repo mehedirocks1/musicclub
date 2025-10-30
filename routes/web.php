@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use DevWizard\Textify\Facades\Textify;   // ADD ONLY
 use Illuminate\Support\Str; 
 use Modules\Packages\Models\Package;
-
+use App\Http\Controllers\AboutController;
 
 
 Route::view('/', 'Frontend.home')->name('home');
@@ -27,6 +27,19 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 
 // Use a dedicated controller for handling callbacks
+
+
+
+
+// Public about page
+Route::get('/about', [AboutController::class, 'index'])->name('about');
+
+// Admin routes (example group - protect with auth + permission middleware)
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('about/edit', [AboutController::class, 'edit'])->name('about.edit');
+    Route::post('about', [AboutController::class, 'update'])->name('about.update');
+});
+
 
 
 
