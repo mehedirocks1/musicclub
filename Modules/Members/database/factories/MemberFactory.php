@@ -18,6 +18,19 @@ class MemberFactory extends Factory
      */
     public function definition(): array
     {
+        $membershipStatus = $this->faker->randomElement(Member::MEMBERSHIP_STATUS);
+
+        // Determine membership start and expiry based on status and plan
+        $plan = $this->faker->randomElement(Member::MEMBERSHIP_PLANS);
+        $startDate = now();
+        $expiresDate = $plan === 'monthly' ? $startDate->copy()->addMonth() : $startDate->copy()->addYear();
+
+        // If membership is pending or inactive, expire accordingly
+        if ($membershipStatus !== 'active') {
+            $startDate = null;
+            $expiresDate = null;
+        }
+
         return [
             'profile_pic' => null,
 
@@ -30,7 +43,7 @@ class MemberFactory extends Factory
             'phone' => '01' . $this->faker->numberBetween(3, 9) . $this->faker->numerify('########'),
 
             // 🔐 Authentication
-            'password' => Hash::make('password'), // ✅ ডিফল্ট hashed password
+            'password' => Hash::make('password'), // default hashed password
 
             // 👨‍👩 Family Info
             'father_name' => $this->faker->name('male'),
@@ -55,10 +68,23 @@ class MemberFactory extends Factory
 
             // 🧾 Membership
             'membership_type' => $this->faker->randomElement(Member::MEMBERSHIP_TYPES),
+            'membership_plan' => $plan,
+            'membership_status' => $membershipStatus,
+            'membership_started_at' => $startDate ? $startDate->toDateString() : null,
+            'membership_expires_at' => $expiresDate ? $expiresDate->toDateString() : null,
             'registration_date' => now()->toDateString(),
 
             // 💰 Account
             'balance' => 0.00,
+
+            // 💳 Last payment snapshot
+            'last_payment_amount' => $membershipStatus === 'active' ? $this->faker->randomFloat(2, 100, 1000) : null,
+            'last_payment_tran_id' => $membershipStatus === 'active' ? 'TRX' . $this->faker->unique()->numberBetween(10000, 999999) : null,
+            'last_payment_at' => $membershipStatus === 'active' ? now() : null,
+            'last_payment_gateway' => $membershipStatus === 'active' ? $this->faker->randomElement(['sslcommerz','paypal','stripe']) : null,
+
+            // 🔘 Status
+            'status' => $membershipStatus === 'active' ? 'active' : 'inactive',
         ];
     }
 }

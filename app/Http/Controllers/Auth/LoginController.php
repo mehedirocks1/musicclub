@@ -31,7 +31,7 @@ class LoginController extends Controller
                 return redirect()->route('filament.admin.pages.dashboard');
             }
 
-            return redirect()->route('filament.member.pages.dashboard');
+              return redirect()->route('member.dashboard');
         }
 
         // 2) Fallback: try WEB guard (admins/users provider)
@@ -45,7 +45,8 @@ class LoginController extends Controller
                     return redirect()->route('filament.admin.pages.dashboard');
                 }
                 if ($user->hasRole('member')) {
-                    return redirect()->route('filament.member.pages.dashboard');
+                    return redirect()->route('member.dashboard');
+
                 }
             }
 

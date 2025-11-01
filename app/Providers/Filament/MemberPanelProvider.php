@@ -7,12 +7,9 @@ use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -26,30 +23,36 @@ class MemberPanelProvider extends PanelProvider
     {
         return $panel
             ->id('member')
-            ->path('member')
-            ->login()
-            
-            // ✅ FIX 1: Explicitly define the custom authentication guard for this panel.
-            ->authGuard('member')
-
+            ->path('member')                  // URL prefix for the member panel
+            ->login(fn () => route('member.login')) // Redirect to your member login
+            ->authGuard('member')             // Custom member guard
             ->colors([
                 'primary' => Color::Amber,
             ])
 
-            // ✅ Auto-discover from Member namespace only
-            ->discoverResources(in: app_path('Filament/Member/Resources'), for: 'App\\Filament\\Member\\Resources')
-            ->discoverPages(in: app_path('Filament/Member/Pages'), for: 'App\\Filament\\Member\\Pages')
-            ->discoverWidgets(in: app_path('Filament/Member/Widgets'), for: 'App\\Filament\\Member\\Widgets')
+            // Only discover pages & widgets specific to member panel
+            ->discoverPages(
+                in: app_path('Filament/Member/Pages'),
+                for: 'App\\Filament\\Member\\Pages'
+            )
+            ->discoverWidgets(
+                in: app_path('Filament/Member/Widgets'),
+                for: 'App\\Filament\\Member\\Widgets'
+            )
 
-            ->pages([
-                Dashboard::class,
-            ])
+            // Explicitly register member-specific pages
+->pages([
+    \App\Filament\Resources\Members\Pages\Dashboard::class,
+    \App\Filament\Resources\Members\Pages\Profile::class,
+    \App\Filament\Resources\Members\Pages\ChangePassword::class,
+    \App\Filament\Resources\Members\Pages\PayFee::class,
+    \App\Filament\Resources\Members\Pages\CheckPayments::class,
+])
+
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                // Add custom widgets here if needed
             ])
 
-            // Web middleware stack
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -62,15 +65,12 @@ class MemberPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
 
-            // ✅ Shield plugin
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
 
-            // ✅ FIX 2: Use the standard Authenticate class; authorization (roles) happens AFTER login via Policies/Shield.
             ->authMiddleware([
                 Authenticate::class,
-                // The 'role:member' check should be handled by Shield or a Policy, not here.
             ]);
     }
 }

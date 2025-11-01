@@ -55,6 +55,10 @@ return new class extends Migration
             // 🧾 ➕ Membership add-ons (for Monthly/Yearly + lifecycle)
             $table->enum('membership_plan', ['monthly', 'yearly'])->default('monthly'); // ✅ new
             $table->enum('membership_status', ['pending', 'active', 'expired', 'inactive'])->default('pending'); // ✅ new
+
+            // ✅ Added status column here
+            $table->enum('status', ['active', 'inactive'])->default('active'); // ✅ new
+
             $table->date('membership_started_at')->nullable();  // ✅ new
             $table->date('membership_expires_at')->nullable();  // ✅ new
 
@@ -77,6 +81,7 @@ return new class extends Migration
             $table->index('membership_plan');     // ✅ new
             $table->index('membership_status');   // ✅ new
             $table->index('membership_expires_at'); // ✅ new
+            $table->index('status');              // ✅ new
         });
 
         // ✅ Add foreign key users.member_id → members.id

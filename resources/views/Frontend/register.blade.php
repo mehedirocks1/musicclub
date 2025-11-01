@@ -152,18 +152,43 @@
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-yellow-500 file:text-black file:font-semibold hover:file:bg-yellow-400">
                     </div>
 
-                    {{-- Optional: Password fields --}}
+                    {{-- ✅ Password fields (Now Required) --}}
                     <div>
-                        <label class="block text-sm text-gray-300 mb-1">Password (optional)</label>
-                        <input type="password" name="password"
-                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                        <p class="text-xs text-gray-400 mt-1">Leave blank to receive a temporary password.</p>
+                        <label class="block text-sm text-gray-300 mb-1">Password <span class="text-yellow-500">*</span></label>
+                        <div class="relative">
+                            <input type="password" name="password" id="password" required
+                                   class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                            <button type="button" id="togglePassword"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-yellow-400">
+                                <svg class="h-5 w-5 eye-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <svg class="h-5 w-5 eye-slash-icon hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 .847 0 1.67.127 2.45.364m1.09 1.091A9.95 9.95 0 0112 5c-4.478 0-8.268 2.943-9.542 7a10.05 10.05 0 003.628 4.675M19.542 12c-.274-.82-.62-1.605-1.028-2.338m-3.18-3.18A9.95 9.95 0 0112 5c4.478 0 8.268 2.943 9.542 7-.274.82-.62 1.605-1.028 2.338m-3.18 3.18A9.95 9.95 0 0012 19c-.847 0-1.67-.127-2.45-.364M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm text-gray-300 mb-1">Confirm Password (optional)</label>
-                        <input type="password" name="password_confirmation"
-                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <label class="block text-sm text-gray-300 mb-1">Confirm Password <span class="text-yellow-500">*</span></label>
+                         <div class="relative">
+                            <input type="password" name="password_confirmation" id="password_confirmation" required
+                                   class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                            <button type="button" id="togglePasswordConfirmation"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-yellow-400">
+                                <svg class="h-5 w-5 eye-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <svg class="h-5 w-5 eye-slash-icon hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 .847 0 1.67.127 2.45.364m1.09 1.091A9.95 9.95 0 0112 5c-4.478 0-8.268 2.943-9.542 7a10.05 10.05 0 003.628 4.675M19.542 12c-.274-.82-.62-1.605-1.028-2.338m-3.18-3.18A9.95 9.95 0 0112 5c4.478 0 8.268 2.943 9.542 7-.274.82-.62 1.605-1.028 2.338m-3.18 3.18A9.95 9.95 0 0012 19c-.847 0-1.67-.127-2.45-.364M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     {{-- ✅ Membership Plan (Monthly/Yearly) --}}
@@ -214,6 +239,7 @@
 {{-- tiny helper to show payable amount --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Payable Amount Logic ---
     const radios = document.querySelectorAll('input[name="membership_plan"]');
     const amt = document.getElementById('payable-amount');
     const setAmt = () => {
@@ -222,6 +248,33 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     radios.forEach(r => r.addEventListener('change', setAmt));
     setAmt();
+
+    // --- NEW: Password Toggle Logic ---
+    const setupPasswordToggle = (inputId, buttonId) => {
+        const passwordInput = document.getElementById(inputId);
+        const toggleButton = document.getElementById(buttonId);
+
+        if (!passwordInput || !toggleButton) return; // Exit if elements not found
+
+        const eyeIcon = toggleButton.querySelector('.eye-icon');
+        const eyeSlashIcon = toggleButton.querySelector('.eye-slash-icon');
+
+        toggleButton.addEventListener('click', function () {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.add('hidden');
+                eyeSlashIcon.classList.remove('hidden');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('hidden');
+                eyeSlashIcon.classList.add('hidden');
+            }
+        });
+    };
+
+    // Setup for both password fields
+    setupPasswordToggle('password', 'togglePassword');
+    setupPasswordToggle('password_confirmation', 'togglePasswordConfirmation');
 });
 </script>
 @endsection

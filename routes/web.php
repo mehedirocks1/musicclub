@@ -31,6 +31,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 
 
+
 // Public about page
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 

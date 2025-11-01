@@ -19,10 +19,13 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Columns\SelectColumn;
 use Modules\Members\Models\Member;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use BackedEnum;
+use Filament\Panel;
 
 class MemberResource extends Resource
 {
@@ -124,6 +127,16 @@ class MemberResource extends Resource
                     ->numeric()
                     ->default(0.00)
                     ->prefix('৳'),
+
+                // Keep account-level status editable in form
+                Select::make('status')
+                    ->label('Account Status')
+                    ->options([
+                        'active' => 'Active',
+                        'inactive' => 'Inactive',
+                    ])
+                    ->default('active')
+                    ->required(),
             ])
             ->columns(3);
     }
@@ -144,6 +157,33 @@ class MemberResource extends Resource
                     'Lifetime' => 'warning',
                     default => 'gray',
                 }),
+
+                // membership_status as inline select (allows pending/active/expired/inactive)
+                SelectColumn::make('membership_status')
+                    ->label('Membership Status')
+                    ->options(array_combine(Member::MEMBERSHIP_STATUS, Member::MEMBERSHIP_STATUS))
+                    ->sortable()
+                    ->searchable()
+                    // save selected enum string directly to DB
+                    ->action(function (Member $record, $state) {
+                        // $state contains the chosen option string (e.g., 'pending','active', etc.)
+                        $record->update(['membership_status' => $state]);
+                    }),
+
+                // account-level status as a toggle (active/inactive)
+                ToggleColumn::make('status')
+                    ->label('Account Status')
+                    ->onIcon('heroicon-o-check-circle')
+                    ->offIcon('heroicon-o-x-circle')
+                    ->onColor('success')
+                    ->offColor('danger')
+                    ->sortable()
+                    ->getStateUsing(fn(Member $record) => $record->status === 'active')
+                    ->action(function (Member $record, bool $state) {
+                        $value = $state ? 'active' : 'inactive';
+                        $record->update(['status' => $value]);
+                    }),
+
                 TextColumn::make('balance_status')
                     ->label('Balance / Due')
                     ->getStateUsing(function (Member $record): string {
@@ -155,7 +195,6 @@ class MemberResource extends Resource
                         $now = Carbon::now();
                         $totalFeeRequired = $registrationFee;
 
-                        // Use membership_plan
                         if ($record->membership_plan === 'monthly') {
                             $monthsPassed = $registrationDate->diffInMonths($now);
                             if ($now->day >= $registrationDate->day) $monthsPassed++;
@@ -182,92 +221,106 @@ class MemberResource extends Resource
                         str_contains($state, 'Credit') => 'success',
                         default => 'gray',
                     }),
+
                 TextColumn::make('balance')->money('BDT')->label('Paid Balance'),
                 TextColumn::make('registration_date')->date('d M Y'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('membership_type')->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES)),
+                Tables\Filters\SelectFilter::make('membership_type')
+                    ->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES)),
+
+                // membership_status filter (shows enum values)
+                Tables\Filters\SelectFilter::make('membership_status')
+                    ->label('Membership Status')
+                    ->options(array_combine(Member::MEMBERSHIP_STATUS, Member::MEMBERSHIP_STATUS)),
+
+                // account-level status filter
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Account Status')
+                    ->options([
+                        'active' => 'Active',
+                        'inactive' => 'Inactive',
+                    ]),
             ])
-->actions([
-    \Filament\Actions\ActionGroup::make([
-        \Filament\Actions\ViewAction::make(),
-        \Filament\Actions\EditAction::make(),
-        \Filament\Actions\DeleteAction::make(),
-        
-        // New action: Send Due SMS
-        \Filament\Actions\Action::make('send_due_sms')
-            ->label('Send Due SMS')
-            ->icon('heroicon-o-chat-bubble-left-right')
-            ->color('primary')
-            ->requiresConfirmation()
-            ->action(function (Member $record) {
-                $due = $record->balance_status; // use your balance_status calculation
-                $phone = $record->phone;
-                if (!$phone) {
-                    \Filament\Notifications\Notification::make()
-                        ->title('No phone number found')
-                        ->danger()
-                        ->send();
-                    return;
-                }
+            ->actions([
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
 
-                $msg = "Dear {$record->full_name}, your current due is {$due}. Member ID: {$record->member_id}";
+                    // Send Due SMS
+                    \Filament\Actions\Action::make('send_due_sms')
+                        ->label('Send Due SMS')
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->action(function (Member $record) {
+                            $due = $record->balance_status; // use your balance_status calculation
+                            $phone = $record->phone;
+                            if (!$phone) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No phone number found')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
 
-                try {
-                    \DevWizard\Textify\Facades\Textify::to($phone)
-                        ->message($msg)
-                        ->via('bulksmsbd')
-                        ->send();
+                            $msg = "Dear {$record->full_name}, your current due is {$due}. Member ID: {$record->member_id}";
 
-                    \Filament\Notifications\Notification::make()
-                        ->title('SMS sent successfully')
-                        ->success()
-                        ->send();
-                } catch (\Throwable $e) {
-                    \Filament\Notifications\Notification::make()
-                        ->title('Failed to send SMS')
-                        ->body($e->getMessage())
-                        ->danger()
-                        ->send();
-                }
-            }),
+                            try {
+                                \DevWizard\Textify\Facades\Textify::to($phone)
+                                    ->message($msg)
+                                    ->via('bulksmsbd')
+                                    ->send();
 
-        // New action: Send Due Email
-        \Filament\Actions\Action::make('send_due_email')
-            ->label('Send Due Email')
-            ->icon('heroicon-o-envelope')
-            ->color('secondary')
-            ->requiresConfirmation()
-            ->action(function (Member $record) {
-                $due = $record->balance_status;
-                $email = $record->email;
-                if (!$email) {
-                    \Filament\Notifications\Notification::make()
-                        ->title('No email found')
-                        ->danger()
-                        ->send();
-                    return;
-                }
+                                \Filament\Notifications\Notification::make()
+                                    ->title('SMS sent successfully')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $e) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Failed to send SMS')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
 
-                try {
-                    \Illuminate\Support\Facades\Mail::to($email)
-                        ->send(new \App\Mail\DueReminderMail($record, $due));
+                    // Send Due Email
+                    \Filament\Actions\Action::make('send_due_email')
+                        ->label('Send Due Email')
+                        ->icon('heroicon-o-envelope')
+                        ->color('secondary')
+                        ->requiresConfirmation()
+                        ->action(function (Member $record) {
+                            $due = $record->balance_status;
+                            $email = $record->email;
+                            if (!$email) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No email found')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
 
-                    \Filament\Notifications\Notification::make()
-                        ->title('Email sent successfully')
-                        ->success()
-                        ->send();
-                } catch (\Throwable $e) {
-                    \Filament\Notifications\Notification::make()
-                        ->title('Failed to send email')
-                        ->body($e->getMessage())
-                        ->danger()
-                        ->send();
-                }
-            }),
-    ])->label('Actions'),
-])
+                            try {
+                                \Illuminate\Support\Facades\Mail::to($email)
+                                    ->send(new \App\Mail\DueReminderMail($record, $due));
 
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Email sent successfully')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $e) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Failed to send email')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ])->label('Actions'),
+            ])
             ->bulkActions([
                 \Filament\Actions\DeleteBulkAction::make(),
                 SendDueBalanceRemindersBulkAction::make('send_due_balance_reminders'),
@@ -282,5 +335,10 @@ class MemberResource extends Resource
             'view'   => ViewMember::route('/{record}'),
             'edit'   => EditMember::route('/{record}/edit'),
         ];
+    }
+
+    public static function getSlug(?Panel $panel = null): string
+    {
+        return 'members';
     }
 }
