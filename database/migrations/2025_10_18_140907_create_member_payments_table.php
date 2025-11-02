@@ -11,13 +11,14 @@ return new class extends Migration
         Schema::create('member_payments', function (Blueprint $t) {
             $t->id();
 
-            // members relation (this one is OK if members table already exists)
+            // members relation
+            // USE nullOnDelete() TO PRESERVE PAYMENT HISTORY
             $t->foreignId('member_id')
                 ->nullable()
                 ->constrained('members')
-                ->cascadeOnDelete();
+                ->nullOnDelete(); // <-- This is the only critical change needed
 
-            // DO NOT constrain here; just a nullable column + index
+            // Optional package relation (no constraint)
             $t->unsignedBigInteger('package_id')->nullable();
             $t->index('package_id');
 
@@ -29,14 +30,20 @@ return new class extends Migration
             $t->enum('plan', ['monthly', 'yearly'])->nullable();
             $t->decimal('amount', 12, 2);
             $t->string('currency', 8)->default('BDT');
-            $t->enum('status', ['pending','paid','failed','cancelled','validation_failed'])->default('pending');
+            $t->enum('status', [
+                'pending',
+                'paid',
+                'failed',
+                'cancelled',
+                'validation_failed'
+            ])->default('pending');
 
             // Gateway response
             $t->string('bank_tran_id')->nullable();
             $t->string('val_id')->nullable();
             $t->string('card_type')->nullable();
 
-            // Member snapshot
+            // Member snapshot (all nullable to support both flows)
             $t->string('full_name')->nullable();
             $t->string('name_bn')->nullable();
             $t->string('username')->nullable();
@@ -56,17 +63,20 @@ return new class extends Migration
             $t->string('membership_type')->nullable();
             $t->string('profile_pic')->nullable();
 
-            // Gateway payload
+            // Persisted hashed password (nullable for Subscribers)
+            $t->string('password_hash')->nullable();
+
+            // Gateway payload (raw response data)
             $t->json('gateway_payload')->nullable();
 
-            // Meta
+            // Meta info
             $t->softDeletes();
             $t->timestamps();
 
             // Helpful indexes
             $t->index(['member_id']);
             $t->index(['status', 'plan']);
-            $t->index(['tran_id']);
+            // $t->index(['tran_id']); // ->unique() already adds an index
         });
     }
 

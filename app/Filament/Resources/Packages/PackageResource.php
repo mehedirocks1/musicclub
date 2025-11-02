@@ -65,9 +65,11 @@ class PackageResource extends Resource
                                     ->placeholder('e.g. Professional Music Production')
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => 
-                                        $operation === 'create' ? $set('slug', Str::slug($state)) : null
+                                    // --- THIS IS THE FIX ---
+                                    ->afterStateUpdated(fn ($state, Set $set) => 
+                                        $set('slug', Str::slug($state))
                                     ),
+                                    // --- END OF FIX ---
 
                                 TextInput::make('slug')
                                     ->label('Slug')
@@ -195,7 +197,7 @@ class PackageResource extends Resource
                                     ->numeric()
                                     ->minValue(0)
                                     ->required()
-                                    ->prefix(fn ($get) => $get('currency') ?: 'BDT')
+                                    ->prefix(fn (Get $get) => $get('currency') ?: 'BDT') // Note: Get also needs to use the imported 'Get'
                                     ->placeholder('0.00'),
 
                                 Select::make('currency')
@@ -219,7 +221,7 @@ class PackageResource extends Resource
                                     ->label('Access Duration (days)')
                                     ->numeric()
                                     ->minValue(1)
-                                    ->visible(fn ($get) => $get('billing_period') === 'one_time')
+                                    ->visible(fn (Get $get) => $get('billing_period') === 'one_time') // Note: And here
                                     ->helperText('Duration for one-time packages')
                                     ->placeholder('30'),
                             ]),
@@ -235,7 +237,6 @@ class PackageResource extends Resource
                     ]),
             ]);
     }
-
     public static function table(Table $table): Table
     {
         return $table
@@ -332,9 +333,9 @@ class PackageResource extends Resource
         ];
     }
 
-    public static function getRecordRouteBindingEloquentQuery(): Builder
+ public static function getEloquentQuery(): Builder
     {
-        return parent::getRecordRouteBindingQuery()
+        return parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
