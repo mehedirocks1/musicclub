@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MembersController extends Controller
 {
@@ -125,4 +126,60 @@ public function updateProfile(Request $request)
     {
         return redirect()->route('member.dashboard');
     }
+
+
+
+/**
+ * Download member ID card as PDF (barryvdh/laravel-dompdf)
+ *
+ * @param  int|string  $id
+ * @return \Symfony\Component\HttpFoundation\StreamedResponse
+ */
+public function memberCard($id)
+{
+    // Try module Member model first, fallback to App\Models\User if needed
+    if (class_exists(\Modules\Members\Models\Member::class)) {
+        $modelClass = \Modules\Members\Models\Member::class;
+    } elseif (class_exists(\App\Models\User::class)) {
+        $modelClass = \App\Models\User::class;
+    } else {
+        abort(500, 'Member model not found.');
+    }
+
+    $member = $modelClass::find($id);
+
+    if (! $member) {
+        abort(404, 'Member not found.');
+    }
+
+    // Prepare data exactly like your Blade expects ($allData)
+    $data = ['allData' => $member];
+
+    // Generate PDF
+    $pdf = Pdf::loadView('backend.customer.member-card', $data)
+        ->setOptions([
+            'defaultFont'    => 'sans-serif',
+            'isRemoteEnabled'=> true, // enable if you use external fonts/assets
+        ])
+        ->setPaper('a4', 'portrait');
+
+    $filename = 'member-card-' . ($member->member_id ?? $member->id) . '.pdf';
+
+    return response()->streamDownload(
+        fn () => print($pdf->output()),
+        $filename
+    );
+}
+
+
+
+
+
+
+
+
+
+
+
+
 }

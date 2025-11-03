@@ -23,6 +23,7 @@ use App\Http\Controllers\MemberAuthController;
 |--------------------------------------------------------------------------
 
 */
+Route::get('/members/{id}/card', [MembersController::class, 'memberCard'])->name('members.card');
 
 Route::prefix('member')->group(function () {
     // This named route is correct
