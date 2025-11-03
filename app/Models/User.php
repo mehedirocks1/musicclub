@@ -26,7 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'member_id', // ✅ Members টেবিলের foreign key
+        'member_id', // Foreign key to Members table
     ];
 
     /**
@@ -50,7 +50,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the user's initials
+     * Get the user's initials (e.g., "John Doe" => "JD")
      */
     public function initials(): string
     {
@@ -62,10 +62,20 @@ class User extends Authenticatable
     }
 
     /**
-     * Relation with Members module
+     * Relation with Member model
      */
     public function member()
     {
         return $this->belongsTo(\Modules\Members\Models\Member::class, 'member_id');
+    }
+
+    /**
+     * Assign default role if none exists
+     */
+    public function assignDefaultRole(string $role = 'super_admin'): void
+    {
+        if (!$this->roles()->exists()) {
+            $this->assignRole($role);
+        }
     }
 }

@@ -5,74 +5,52 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
+    /**
+     * Handle a login request for either member or admin/user.
+     */
     public function login(Request $request)
     {
         $data = $request->validate([
-            // this field may contain either email or username (we'll detect)
+            // Can be email or username
             'email'    => ['required', 'string'],
             'password' => ['required', 'string'],
             'remember' => ['nullable', 'boolean'],
         ]);
 
+        $login    = trim($data['email']);
+        $password = $data['password'];
         $remember = (bool) ($data['remember'] ?? false);
-        $login    = trim($data['email']); // may be username or email
-        $pass     = $data['password'];
 
-        // detect if login looks like an email
         $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL) !== false;
 
-        // normalize email if used
+        // Normalize email if needed
         if ($isEmail) {
             $login = strtolower($login);
         }
 
-        /**
-         * 1) Try MEMBER guard first (members provider)
-         *    - attempt by email if looks like email
-         *    - else attempt by username
-         */
-        $memberCredentials = $isEmail
-            ? ['email' => $login, 'password' => $pass]
-            : ['username' => $login, 'password' => $pass];
-
-        if (Auth::guard('member')->attempt($memberCredentials, $remember)) {
-            $request->session()->regenerate();
+        // Attempt login via MEMBER guard first
+        if ($this->attemptLogin('member', $login, $password, $remember, $isEmail)) {
             $user = Auth::guard('member')->user();
-
-            // If member model has roles, respect them; otherwise go to member panel
-            if (method_exists($user, 'hasRole') && $user->hasRole('admin')) {
-                return redirect()->route('filament.admin.pages.dashboard');
-            }
-
             return redirect()->route('member.dashboard');
         }
 
-        /**
-         * 2) Fallback: try WEB guard (admins/users provider)
-         *    - admins/users typically login via email. We still try username as fallback.
-         */
-        $webCredentials = $isEmail
-            ? ['email' => $login, 'password' => $pass]
-            : ['username' => $login, 'password' => $pass];
-
-        if (Auth::guard('web')->attempt($webCredentials, $remember)) {
-            $request->session()->regenerate();
+        // Fallback: attempt login via WEB guard (admin/user)
+        if ($this->attemptLogin('web', $login, $password, $remember, $isEmail)) {
             $user = Auth::guard('web')->user();
 
-            if (method_exists($user, 'hasRole')) {
-                if ($user->hasRole('admin')) {
-                    return redirect()->route('filament.admin.pages.dashboard');
-                }
-                if ($user->hasRole('member')) {
-                    return redirect()->route('member.dashboard');
-                }
+            // Redirect based on role
+            if ($user->hasRole('super_admin') || $user->hasRole('administrator') || $user->hasRole('editor')) {
+                return redirect()->route('filament.admin.pages.dashboard');
+            }
+            if ($user->hasRole('viewer')) {
+                return redirect()->route('filament.admin.pages.dashboard'); // adjust if needed
             }
 
+            // Default fallback
             return redirect()->route('filament.admin.pages.dashboard');
         }
 
@@ -81,14 +59,32 @@ class LoginController extends Controller
         ]);
     }
 
+    /**
+     * Attempt login for a specific guard.
+     */
+    protected function attemptLogin(string $guard, string $login, string $password, bool $remember, bool $isEmail): bool
+    {
+        $credentials = $isEmail
+            ? ['email' => $login, 'password' => $password]
+            : ['username' => $login, 'password' => $password];
+
+        if (Auth::guard($guard)->attempt($credentials, $remember)) {
+            session()->regenerate();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Log the user out of all guards.
+     */
     public function logout(Request $request)
     {
-        // logout from both guards if needed
-        if (Auth::guard('member')->check()) {
-            Auth::guard('member')->logout();
-        }
-        if (Auth::guard('web')->check()) {
-            Auth::guard('web')->logout();
+        foreach (['member', 'web'] as $guard) {
+            if (Auth::guard($guard)->check()) {
+                Auth::guard($guard)->logout();
+            }
         }
 
         $request->session()->invalidate();

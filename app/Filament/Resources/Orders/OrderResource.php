@@ -9,12 +9,16 @@ use App\Filament\Resources\Orders\Pages\ViewOrder;
 use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
-use App\Models\Order;
+use Modules\Orders\Models\Order; // <- fixed namespace (change if your Order model lives elsewhere)
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -41,16 +45,23 @@ class OrderResource extends Resource
         return $table->columns([
             TextColumn::make('order_code')->badge()->searchable(),
             TextColumn::make('buyer_type')->label('Buyer'),
-            TextColumn::make('total')->money(fn($r)=>$r->currency ?: 'BDT', true),
+            TextColumn::make('total')->money(fn ($r) => $r->currency ?: 'BDT', true),
             BadgeColumn::make('status')->colors([
-                'warning'=>'pending','success'=>'paid','danger'=>'failed','gray'=>'cancelled'
+                'warning' => 'pending',
+                'success' => 'paid',
+                'danger'  => 'failed',
+                'gray'    => 'cancelled',
             ]),
             TextColumn::make('gateway'),
             TextColumn::make('paid_at')->dateTime(),
             TextColumn::make('created_at')->since(),
-        ])->defaultSort('created_at','desc')
-          ->actions([Tables\Actions\ViewAction::make()])
-          ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
+        ])->defaultSort('created_at', 'desc')
+          ->actions([
+              ViewAction::make(),
+          ])
+          ->bulkActions([
+              DeleteBulkAction::make(),
+          ]);
     }
 
     public static function getRelations(): array
@@ -63,10 +74,10 @@ class OrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListOrders::route('/'),
+            'index'  => ListOrders::route('/'),
             'create' => CreateOrder::route('/create'),
-            'view' => ViewOrder::route('/{record}'),
-            'edit' => EditOrder::route('/{record}/edit'),
+            'view'   => ViewOrder::route('/{record}'),
+            'edit'   => EditOrder::route('/{record}/edit'),
         ];
     }
 
