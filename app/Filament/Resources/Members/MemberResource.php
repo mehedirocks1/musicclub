@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Members;
 
+use Maatwebsite\Excel\Facades\Excel;
 use App\Filament\Resources\Members\BulkActions\SendDueBalanceRemindersBulkAction;
 use App\Filament\Resources\Members\Pages\CreateMember;
 use App\Filament\Resources\Members\Pages\EditMember;
@@ -28,6 +29,9 @@ use BackedEnum;
 use Filament\Panel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+
+// Added for the header action
+use Filament\Tables\Contracts\HasTable;
 
 class MemberResource extends Resource
 {
@@ -244,39 +248,47 @@ class MemberResource extends Resource
                         'inactive' => 'Inactive',
                     ]),
             ])
+            // *** MOVED THE ACTION HERE ***
+->headerActions([
+    \Filament\Actions\Action::make('download_excel')
+        ->label('Download Excel')
+        ->icon('heroicon-o-arrow-down-tray')
+        ->color('success')
+        ->requiresConfirmation()
+        ->url(fn () => route('members.export')), 
+            ])
             ->actions([
                 \Filament\Actions\ActionGroup::make([
                     \Filament\Actions\ViewAction::make(),
                     \Filament\Actions\EditAction::make(),
                     \Filament\Actions\DeleteAction::make(),
 
-
                     \Filament\Actions\Action::make('generate_id_card')
-                ->label('ID Card')
-                ->icon('heroicon-o-identification')
-                ->color('info') // Or 'success', 'warning', etc.
-                ->action(function (Member $record): StreamedResponse {
-                    
-                    // 1. Prepare the data (using the $record from the table row)
-                    $data['allData'] = $record;
+                        ->label('ID Card')
+                        ->icon('heroicon-o-identification')
+                        ->color('info') // Or 'success', 'warning', etc.
+                        ->action(function (Member $record): StreamedResponse {
+                            
+                            // 1. Prepare the data (using the $record from the table row)
+                            $data['allData'] = $record;
 
-                    // 2. Load the view and set options
-                    // (I've added 'isRemoteEnabled' => true, which you need for Google Fonts)
-                    $pdf = Pdf::loadView('backend.member-card', $data)
-                        ->setOptions([
-                            'defaultFont' => 'sans-serif',
-                            'isRemoteEnabled' => true 
-                        ]);
+                            // 2. Load the view and set options
+                            // (I've added 'isRemoteEnabled' => true, which you need for Google Fonts)
+                            $pdf = Pdf::loadView('backend.member-card', $data)
+                                ->setOptions([
+                                    'defaultFont' => 'sans-serif',
+                                    'isRemoteEnabled' => true 
+                                ]);
 
-                    // 3. Set a dynamic filename
-                    $filename = 'id-card-' . $record->member_id . '-' . $record->full_name . '.pdf';
+                            // 3. Set a dynamic filename
+                            $filename = 'id-card-' . $record->member_id . '-' . $record->full_name . '.pdf';
 
-                    // 4. Return a StreamedResponse to download the file
-                    return response()->streamDownload(
-                        fn () => print($pdf->output()),
-                        $filename
-                    );
-                }),
+                            // 4. Return a StreamedResponse to download the file
+                            return response()->streamDownload(
+                                fn () => print($pdf->output()),
+                                $filename
+                            );
+                        }),
 
                     // Send Due SMS
                     \Filament\Actions\Action::make('send_due_sms')
