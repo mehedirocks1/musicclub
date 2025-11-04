@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use App\Models\User;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\MultiSelect;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Schema;
 use Spatie\Permission\Models\Role;
+use App\Models\User;
 
 class UserForm
 {
@@ -26,7 +26,10 @@ class UserForm
                     ->required()
                     ->maxLength(255),
 
-                DateTimePicker::make('email_verified_at'),
+                // Non-editable, auto-set timestamp
+                DateTimePicker::make('email_verified_at')
+                    ->disabled()
+                    ->default(now()),
 
                 TextInput::make('password')
                     ->password()
@@ -42,7 +45,9 @@ class UserForm
                 MultiSelect::make('roles')
                     ->label('Roles')
                     ->options(Role::pluck('name', 'name'))
-                    ->required(),
+                    ->required()
+                    // Preselect roles on edit
+                    ->default(fn ($record) => $record ? $record->roles->pluck('name')->toArray() : []),
             ]);
     }
 }
