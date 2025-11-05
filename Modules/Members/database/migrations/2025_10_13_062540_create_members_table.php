@@ -10,13 +10,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('members', function (Blueprint $table) {
-            $table->id();
+            $table->id(); // PK
 
             // 🖼️ Profile
-            $table->string('profile_pic')->nullable(); // storage path
+            $table->string('profile_pic')->nullable(); 
 
             // 🧍 Basic Info
-            $table->string('member_id')->unique();
+            $table->unsignedBigInteger('member_id')->unique(); // sequential numeric
             $table->string('username')->unique();
             $table->string('name_bn')->nullable();
             $table->string('full_name');
@@ -25,7 +25,7 @@ return new class extends Migration
 
             // 🔐 Authentication
             $table->string('password')->nullable();
-            $table->rememberToken(); // 🔐 optional but useful for auth guards
+            $table->rememberToken();
 
             // 👨‍👩 Family Info
             $table->string('father_name')->nullable();
@@ -48,28 +48,23 @@ return new class extends Migration
             $table->string('district')->nullable();
             $table->text('address')->nullable();
 
-            // 🧾 Membership (existing)
+            // 🧾 Membership
             $table->string('membership_type')->default('Student');
             $table->date('registration_date')->nullable();
-
-            // 🧾 ➕ Membership add-ons (for Monthly/Yearly + lifecycle)
-            $table->enum('membership_plan', ['monthly', 'yearly'])->default('monthly'); // ✅ new
-            $table->enum('membership_status', ['pending', 'active', 'expired', 'inactive'])->default('pending'); // ✅ new
-
-            // ✅ Added status column here
-            $table->enum('status', ['active', 'inactive'])->default('active'); // ✅ new
-
-            $table->date('membership_started_at')->nullable();  // ✅ new
-            $table->date('membership_expires_at')->nullable();  // ✅ new
+            $table->enum('membership_plan', ['monthly', 'yearly'])->default('monthly');
+            $table->enum('membership_status', ['pending', 'active', 'expired', 'inactive'])->default('pending');
+            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->date('membership_started_at')->nullable();
+            $table->date('membership_expires_at')->nullable();
 
             // 💰 Account
             $table->decimal('balance', 12, 2)->default(0);
 
-            // 💳 Last payment snapshot (handy for dashboard/quick look)
-            $table->decimal('last_payment_amount', 12, 2)->nullable(); // ✅ new
-            $table->string('last_payment_tran_id')->nullable();        // ✅ new
-            $table->timestamp('last_payment_at')->nullable();          // ✅ new
-            $table->string('last_payment_gateway')->nullable();        // e.g., 'sslcommerz' // ✅ new
+            // 💳 Last payment snapshot
+            $table->decimal('last_payment_amount', 12, 2)->nullable();
+            $table->string('last_payment_tran_id')->nullable();
+            $table->timestamp('last_payment_at')->nullable();
+            $table->string('last_payment_gateway')->nullable();
 
             // 🧠 Soft Deletes + timestamps
             $table->softDeletes();
@@ -78,17 +73,18 @@ return new class extends Migration
             // Indexes
             $table->index('membership_type');
             $table->index('registration_date');
-            $table->index('membership_plan');     // ✅ new
-            $table->index('membership_status');   // ✅ new
-            $table->index('membership_expires_at'); // ✅ new
-            $table->index('status');              // ✅ new
+            $table->index('membership_plan');
+            $table->index('membership_status');
+            $table->index('membership_expires_at');
+            $table->index('status');
         });
 
-        // ✅ Add foreign key users.member_id → members.id
+        // ✅ Optional: foreign key linking users.member_id → members.member_id
         Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'member_id')) {
                 $table->foreign('member_id')
-                    ->references('id')->on('members')
+                    ->references('member_id')
+                    ->on('members')
                     ->nullOnDelete();
             }
         });

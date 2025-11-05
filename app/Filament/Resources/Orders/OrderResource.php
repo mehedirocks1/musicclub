@@ -9,26 +9,24 @@ use App\Filament\Resources\Orders\Pages\ViewOrder;
 use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
-use Modules\Orders\Models\Order; // <- fixed namespace (change if your Order model lives elsewhere)
+use App\Models\MemberPayment;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class OrderResource extends Resource
 {
-    protected static ?string $model = Order::class;
+ protected static ?string $model = MemberPayment::class;
+protected static ?string $label = 'Order';
+protected static ?string $pluralLabel = 'Orders';
+protected static ?string $navigationLabel = 'Orders';
+
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'order_code';
+    protected static ?string $recordTitleAttribute = 'tran_id';
 
     public static function form(Schema $schema): Schema
     {
@@ -42,33 +40,12 @@ class OrderResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('order_code')->badge()->searchable(),
-            TextColumn::make('buyer_type')->label('Buyer'),
-            TextColumn::make('total')->money(fn ($r) => $r->currency ?: 'BDT', true),
-            BadgeColumn::make('status')->colors([
-                'warning' => 'pending',
-                'success' => 'paid',
-                'danger'  => 'failed',
-                'gray'    => 'cancelled',
-            ]),
-            TextColumn::make('gateway'),
-            TextColumn::make('paid_at')->dateTime(),
-            TextColumn::make('created_at')->since(),
-        ])->defaultSort('created_at', 'desc')
-          ->actions([
-              ViewAction::make(),
-          ])
-          ->bulkActions([
-              DeleteBulkAction::make(),
-          ]);
+        return OrdersTable::configure($table);
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -79,13 +56,5 @@ class OrderResource extends Resource
             'view'   => ViewOrder::route('/{record}'),
             'edit'   => EditOrder::route('/{record}/edit'),
         ];
-    }
-
-    public static function getRecordRouteBindingEloquentQuery(): Builder
-    {
-        return parent::getRecordRouteBindingEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
     }
 }
