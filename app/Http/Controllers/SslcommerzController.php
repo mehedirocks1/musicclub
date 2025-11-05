@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Raziul\Sslcommerz\Facades\Sslcommerz;
 use App\Models\MemberPayment;
+use App\Models\Payments;
 use Modules\Members\Models\Member;
 use Modules\Packages\App\Models\Package;
 use DevWizard\Textify\Facades\Textify;
@@ -146,7 +147,7 @@ class SslcommerzController extends Controller
     {
         return $this->finalize($request, 'ipn');
     }
-
+/*
     protected function finalize(Request $request, string $source)
     {
         $tranId = $request->input('tran_id');
@@ -328,6 +329,171 @@ class SslcommerzController extends Controller
             return $this->finalizeResponse($source, false, 'Server error');
         }
     }
+*/
+
+
+
+protected function finalize(Request $request, string $source)
+{
+    $tranId = $request->input('tran_id');
+    if (!$tranId) return $this->finalizeResponse($source, false, 'Invalid callback');
+
+    $memberPayment = MemberPayment::where('tran_id', $tranId)->first();
+    if (!$memberPayment) return $this->finalizeResponse($source, false, 'Unknown transaction');
+    if ($memberPayment->status === 'paid') return $this->finalizeResponse($source, true, 'Already processed');
+
+    // Validate payment
+    $isValid = Sslcommerz::validatePayment($request->all(), $tranId, $memberPayment->amount);
+
+    $reqCurrency = $request->input('currency');
+    $storeCurrency = config('sslcommerz.store.currency', 'BDT');
+    if ($isValid && $reqCurrency && strtoupper($reqCurrency) !== strtoupper($storeCurrency)) {
+        $isValid = false;
+        Log::warning('SSL finalize: currency mismatch', compact('tranId','reqCurrency','storeCurrency'));
+    }
+
+    if (!$isValid) {
+        $memberPayment->update(['status' => 'validation_failed', 'gateway_payload' => $request->all()]);
+        return $this->finalizeResponse($source, false, 'Validation failed');
+    }
+
+    try {
+        $smsCtx = ['phone' => null, 'member_id' => null, 'subscriber_id' => null, 'amount' => null];
+
+        DB::transaction(function () use ($memberPayment, $request, &$smsCtx, $tranId) {
+
+            if ($memberPayment->package_id) {
+                // Subscriber package payment
+                $subscriber = \Modules\Subscribers\Models\Subscriber::updateOrCreate(
+                    ['email' => $memberPayment->email ?: $memberPayment->phone],
+                    [
+                        'full_name' => $memberPayment->full_name,
+                        'username' => $memberPayment->username,
+                        'phone' => $memberPayment->phone,
+                        'status' => 'active',
+                    ]
+                );
+
+                $memberPayment->update([
+                    'status' => 'paid',
+                    'member_id' => null,
+                    'gateway_payload' => $request->all(),
+                    'bank_tran_id' => $request->input('bank_tran_id'),
+                    'val_id' => $request->input('val_id'),
+                    'card_type' => $request->input('card_type'),
+                ]);
+
+                // Insert into payments table
+                \App\Models\Payments::create([
+                    'member_id' => null,
+                    'subscriber_id' => $subscriber->subscriber_id ?? null,
+                    'tran_id' => $memberPayment->tran_id,
+                    'package_id' => $memberPayment->package_id,
+                    'amount' => $memberPayment->amount,
+                    'currency' => 'BDT',
+                    'status' => 'paid',
+                    'method' => 'sslcommerz',
+                    'transaction_id' => $request->input('bank_tran_id') ?? $request->input('val_id'),
+                    'note' => 'Subscriber package payment',
+                ]);
+
+                $smsCtx['phone'] = $subscriber->phone;
+                $smsCtx['subscriber_id'] = $subscriber->subscriber_id ?? null;
+                $smsCtx['amount'] = $memberPayment->amount;
+
+            } else {
+                // Member payment
+                $memberPasswordHash = $memberPayment->password_hash ?? session()->pull("reg:{$tranId}.password") ?? Hash::make(Str::random(12));
+                $expiresAt = $memberPayment->plan === 'yearly' ? now()->addYear() : now()->addMonth();
+
+                $member = Member::create([
+                    'profile_pic' => $memberPayment->profile_pic,
+                    'member_id' => 'M'.date('ymd').Str::upper(Str::random(4)),
+                    'username' => $memberPayment->username,
+                    'name_bn' => $memberPayment->name_bn,
+                    'full_name' => $memberPayment->full_name ?: 'Member',
+                    'email' => $memberPayment->email,
+                    'phone' => $memberPayment->phone,
+                    'password' => $memberPasswordHash,
+                    'dob' => $memberPayment->dob,
+                    'id_number' => $memberPayment->id_number,
+                    'gender' => $memberPayment->gender,
+                    'blood_group' => $memberPayment->blood_group,
+                    'education_qualification' => $memberPayment->education_qualification,
+                    'profession' => $memberPayment->profession,
+                    'other_expertise' => $memberPayment->other_expertise,
+                    'country' => $memberPayment->country ?: 'Bangladesh',
+                    'division' => $memberPayment->division,
+                    'district' => $memberPayment->district,
+                    'address' => $memberPayment->address,
+                    'membership_type' => $memberPayment->membership_type ?: 'Student',
+                    'membership_status' => 'active',
+                    'membership_plan' => $memberPayment->plan,
+                    'membership_started_at' => now(),
+                    'membership_expires_at' => $expiresAt,
+                ]);
+
+                $memberPayment->update([
+                    'status' => 'paid',
+                    'member_id' => $member->id,
+                    'gateway_payload' => $request->all(),
+                    'bank_tran_id' => $request->input('bank_tran_id'),
+                    'val_id' => $request->input('val_id'),
+                    'card_type' => $request->input('card_type'),
+                ]);
+
+                // Insert into payments table
+                \App\Models\Payments::create([
+                    'member_id' => $member->id,
+                    'subscriber_id' => null,
+                    'tran_id' => $memberPayment->tran_id,
+                    'package_id' => $memberPayment->package_id,
+                    'amount' => $memberPayment->amount,
+                    'currency' => 'BDT',
+                    'status' => 'paid',
+                    'method' => 'sslcommerz',
+                    'transaction_id' => $request->input('bank_tran_id') ?? $request->input('val_id'),
+                    'note' => 'Membership payment',
+                ]);
+
+                $smsCtx['phone'] = $member->phone;
+                $smsCtx['member_id'] = $member->member_id;
+                $smsCtx['amount'] = $memberPayment->amount;
+            }
+        });
+
+        // Send SMS
+        if (!empty($smsCtx['phone']) && !empty($smsCtx['amount'])) {
+            $to = $this->normalizeBdMsisdn($smsCtx['phone']);
+            $amt = number_format((float)$smsCtx['amount'], 2);
+
+            $msg = "Welcome to POJ Music Club\nYou paid BDT {$amt}";
+            if (!empty($smsCtx['member_id'])) {
+                $msg .= "\nMember ID: {$smsCtx['member_id']}";
+            } elseif (!empty($smsCtx['subscriber_id'])) {
+                $msg .= "\nSubscriber ID: {$smsCtx['subscriber_id']}";
+            }
+
+            Textify::to($to)->message($msg)->via('bulksmsbd')->send();
+        }
+
+        return $this->finalizeResponse($source, true, 'Payment Success');
+
+    } catch (\Throwable $e) {
+        Log::error('SSL finalize: DB error', ['tran_id' => $tranId, 'error' => $e->getMessage()]);
+        return $this->finalizeResponse($source, false, 'Server error');
+    }
+}
+
+
+
+
+
+
+
+
+
+
 
     protected function mark(?string $tranId, string $status): void
     {
