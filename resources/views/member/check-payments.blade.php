@@ -1,4 +1,9 @@
-<x-member-layout>
+@extends('member.layout')
+
+@section('title', 'Payment History - POJ Music Club')
+
+@section('content')
+<div class="max-w-5xl mx-auto mt-8 p-4">
     <h2 class="text-2xl font-bold mb-4">Payment History</h2>
 
     <div class="overflow-x-auto bg-white rounded shadow">
@@ -15,7 +20,14 @@
                     <tr>
                         <td class="px-6 py-4">{{ $payment->created_at->format('d M, Y') }}</td>
                         <td class="px-6 py-4">${{ number_format($payment->amount, 2) }}</td>
-                        <td class="px-6 py-4">{{ ucfirst($payment->status) }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 text-sm rounded-full 
+                                @if($payment->status === 'completed') bg-green-100 text-green-700 
+                                @elseif($payment->status === 'pending') bg-yellow-100 text-yellow-700 
+                                @else bg-red-100 text-red-700 @endif">
+                                {{ ucfirst($payment->status) }}
+                            </span>
+                        </td>
                     </tr>
                 @empty
                     <tr>
@@ -25,4 +37,5 @@
             </tbody>
         </table>
     </div>
-</x-member-layout>
+</div>
+@endsection

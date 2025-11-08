@@ -8,46 +8,62 @@ use Illuminate\Validation\ValidationException;
 
 class MemberAuthController extends Controller
 {
+    /**
+     * Show custom member login form.
+     */
+public function showLoginForm()
+{
+    // If already logged in as a member, redirect to dashboard
+    if (Auth::guard('member')->check()) {
+        return redirect()->route('member.dashboard');
+    }
+
+    return view('member.login'); // show login form only if not logged in
+}
+
+    /**
+     * Handle member login using 'member' guard.
+     */
     public function login(Request $request)
     {
-        // validate
+        // Validate input
         $credentials = $request->validate([
-            'email'    => ['required', 'string', 'email'],
+            'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
             'remember' => ['nullable', 'boolean'],
         ]);
 
-        // যদি Filament member panel আলাদা guard ইউজ করে থাকো, এখানে সেট করো
-        // উদাহরণ: $guard = 'member';
-        // নাহলে ডিফল্ট 'web' guard-ই ঠিক আছে
-        $guard = config('auth.defaults.guard', 'web');
+        $guard = 'member';
+        $remember = (bool) ($credentials['remember'] ?? false);
 
-        // attempt
+        // Attempt login
         if (! Auth::guard($guard)->attempt(
             ['email' => $credentials['email'], 'password' => $credentials['password']],
-            (bool) ($credentials['remember'] ?? false)
+            $remember
         )) {
             throw ValidationException::withMessages([
-                'email' => __('These credentials do not match our records.'),
+                'email' => __('Invalid email or password.'),
             ]);
         }
 
-        // session regenerate (security)
+        // Regenerate session
         $request->session()->regenerate();
 
-        // Filament member panel ড্যাশবোর্ডে পাঠাও
-        return redirect()->route('filament.member.pages.dashboard');
+        // Redirect to member dashboard
+        return redirect()->route('member.dashboard');
     }
 
+    /**
+     * Logout member.
+     */
     public function logout(Request $request)
     {
-        $guard = config('auth.defaults.guard', 'web');
+        $guard = 'member';
 
         Auth::guard($guard)->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // লগআউটের পর হোমে বা লগইন পেজে
-        return redirect()->to('/');
+        return redirect()->route('member.login');
     }
 }

@@ -88,24 +88,28 @@ class MembersController extends Controller
     /**
      * Update member password
      */
-    public function updatePassword(Request $request)
-    {
-        $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|confirmed|min:6',
-        ]);
+   public function updatePassword(Request $request)
+{
+    // Validate input
+    $request->validate([
+        'current_password' => 'required',
+        'password' => 'required|confirmed|min:6',
+    ]);
 
-        $member = Auth::guard('member')->user();
+    $member = Auth::guard('member')->user();
 
-        if (!Hash::check($request->current_password, $member->password)) {
-            return back()->withErrors(['current_password' => 'Current password does not match']);
-        }
-
-        $member->password = Hash::make($request->password);
-        $member->save();
-
-        return redirect()->route('member.dashboard')->with('success', 'Password updated successfully');
+    // Check if current password matches
+    if (!Hash::check($request->current_password, $member->password)) {
+        return back()->with('error', 'Current password does not match');
     }
+
+    // Update password
+    $member->password = Hash::make($request->password);
+    $member->save();
+
+    // Redirect back with success message
+    return back()->with('success', 'Password updated successfully');
+}
 
     /**
      * Pay Fee page
