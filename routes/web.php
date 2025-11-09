@@ -17,6 +17,9 @@ Route::view('/about', 'Frontend.about')->name('about');
 Route::view('/branch', 'Frontend.branch')->name('branch');
 Route::view('/contact', 'Frontend.contact')->name('contact');
 Route::view('/gallery', 'Frontend.gallery')->name('gallery');
+Route::view('/terms', 'frontend.terms')->name('terms');
+Route::view('/privacy', 'frontend.privacy')->name('privacy');
+Route::view('/refund-policy', 'frontend.refund-policy')->name('refund.policy');
 
 
 Route::get('/register', [RegistrationController::class, 'create'])->name('register');

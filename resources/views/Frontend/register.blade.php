@@ -4,7 +4,8 @@
 
 @section('content')
 <div class="relative z-10">
-    <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    {{-- Container width expanded to max-w-4xl (was max-w-3xl) --}}
+    <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="glass-morphism rounded-2xl p-8 shadow-xl border border-yellow-600/30">
             <h1 class="text-3xl font-extrabold text-gradient-yellow text-center mb-8">Join POJ Music Club</h1>
 
@@ -30,6 +31,7 @@
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- Personal Information --}}
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Full Name <span class="text-yellow-500">*</span></label>
                         <input type="text" name="full_name" value="{{ old('full_name') }}" required
@@ -39,6 +41,18 @@
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Name (Bangla)</label>
                         <input type="text" name="name_bn" value="{{ old('name_bn') }}"
+                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Father's Name</label>
+                        <input type="text" name="father_name" value="{{ old('father_name') }}"
+                               class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Mother's Name</label>
+                        <input type="text" name="mother_name" value="{{ old('mother_name') }}"
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     </div>
 
@@ -112,6 +126,7 @@
                                   class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">{{ old('other_expertise') }}</textarea>
                     </div>
 
+                    {{-- Address Fields --}}
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Country</label>
                         <input type="text" name="country" value="{{ old('country','Bangladesh') }}"
@@ -136,6 +151,7 @@
                                   class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500">{{ old('address') }}</textarea>
                     </div>
 
+                    {{-- Membership Type & Picture --}}
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Membership Type <span class="text-yellow-500">*</span></label>
                         <select name="membership_type" required
@@ -152,7 +168,7 @@
                                class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-yellow-500 file:text-black file:font-semibold hover:file:bg-yellow-400">
                     </div>
 
-                    {{-- ✅ Password fields (Now Required) --}}
+                    {{-- Password Fields --}}
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Password <span class="text-yellow-500">*</span></label>
                         <div class="relative">
@@ -174,7 +190,7 @@
 
                     <div>
                         <label class="block text-sm text-gray-300 mb-1">Confirm Password <span class="text-yellow-500">*</span></label>
-                         <div class="relative">
+                           <div class="relative">
                             <input type="password" name="password_confirmation" id="password_confirmation" required
                                    class="w-full rounded-lg bg-black/40 border border-yellow-600/30 px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                             <button type="button" id="togglePasswordConfirmation"
@@ -191,34 +207,63 @@
                         </div>
                     </div>
 
-                    {{-- ✅ Membership Plan (Monthly/Yearly) --}}
+                    {{-- NEW: Membership Plan & Fee Breakdown --}}
                     <div class="md:col-span-2">
                         <label class="block text-sm text-gray-300 mb-2">Membership Plan <span class="text-yellow-500">*</span></label>
+                        
+                        {{-- Hidden input for Registration Fee (৳100) --}}
+                        <input type="hidden" name="registration_fee" id="registration-fee" value="100">
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                             <label class="flex items-center gap-3 rounded-lg border border-yellow-600/30 bg-black/40 p-3 cursor-pointer hover:border-yellow-400/60">
                                 <input type="radio" name="membership_plan" value="monthly" required
-                                       @checked(old('membership_plan')==='monthly') class="accent-yellow-500">
-                                <span class="text-yellow-400 font-semibold">Monthly</span>
-                                <span class="ml-auto text-gray-300">৳200</span>
+                                       @checked(old('membership_plan')==='monthly') class="accent-yellow-500" data-fee="200">
+                                <span class="text-yellow-400 font-semibold">Monthly Plan</span>
+                                <span class="ml-auto text-gray-300">৳200 / month</span>
                             </label>
 
                             <label class="flex items-center gap-3 rounded-lg border border-yellow-600/30 bg-black/40 p-3 cursor-pointer hover:border-yellow-400/60">
                                 <input type="radio" name="membership_plan" value="yearly" required
-                                       @checked(old('membership_plan')==='yearly') class="accent-yellow-500">
-                                <span class="text-yellow-400 font-semibold">Yearly</span>
-                                <span class="ml-auto text-gray-300">৳2,000</span>
+                                       @checked(old('membership_plan')==='yearly') class="accent-yellow-500" data-fee="2400">
+                                <span class="text-yellow-400 font-semibold">Yearly Plan</span>
+                                <span class="ml-auto text-gray-300">৳2,400 / year</span>
                             </label>
                         </div>
-
-                        <div class="mt-3 rounded-lg border border-yellow-600/30 bg-black/30 p-3 text-sm text-gray-300">
-                            <div class="flex items-center justify-between">
-                                <span>Payable Amount</span>
-                                <span id="payable-amount" class="font-bold text-yellow-400">৳0</span>
+                        
+                        {{-- Fee Summary Section --}}
+                        <div class="rounded-lg border border-yellow-600/30 bg-black/30 p-4 text-sm text-gray-300">
+                            <div class="flex items-center justify-between mb-1">
+                                <span>One-time Registration Fee</span>
+                                <span class="font-bold text-gray-300">৳100</span>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">Selected plan fee will be processed via SSLCommerz. On success, the amount will be added to your member balance.</p>
+                            <div class="flex items-center justify-between border-b border-yellow-600/20 pb-2 mb-2">
+                                <span>Initial Membership Fee</span>
+                                <span id="membership-fee" class="font-bold text-yellow-400">৳0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-base font-semibold">Total Payable Amount</span>
+                                <span id="payable-amount" class="text-lg font-extrabold text-yellow-300">৳100</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">The total amount will be processed via SSLCommerz. Upon success, the initial membership fee will be applied to your account.</p>
                         </div>
+
                     </div>
+                </div>
+
+                {{-- Agreement checkbox (required) --}}
+                <div class="pt-4">
+                    <label class="inline-flex items-start gap-3 text-sm text-gray-300">
+                        <input type="checkbox" name="agree_terms" id="agree_terms" required class="mt-1 accent-yellow-500">
+                        <span>
+                            I have read and agree to the
+                            <a href="{{ url('/terms') }}" target="_blank" class="text-yellow-400 underline">Terms &amp; Conditions</a>,
+                            <a href="{{ url('/privacy') }}" target="_blank" class="text-yellow-400 underline">Privacy Policy</a>, and
+                            <a href="{{ url('/refund-policy') }}" target="_blank" class="text-yellow-400 underline">Return / Refund / Cancellation Policy</a>.
+                        </span>
+                    </label>
+                    @error('agree_terms')
+                        <p class="text-red-400 text-sm mt-2">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="pt-4 flex items-center justify-between">
@@ -241,20 +286,50 @@
 document.addEventListener('DOMContentLoaded', function () {
     // --- Payable Amount Logic ---
     const radios = document.querySelectorAll('input[name="membership_plan"]');
-    const amt = document.getElementById('payable-amount');
+    const registrationFeeInput = document.getElementById('registration-fee');
+    const membershipFeeSpan = document.getElementById('membership-fee');
+    const payableAmountSpan = document.getElementById('payable-amount');
+
+    // Constants based on your request
+    const REGISTRATION_FEE = 100; // ৳100
+    const MONTHLY_FEE = 200; // ৳200
+    const YEARLY_FEE = 2400; // ৳2400
+
     const setAmt = () => {
-        const v = document.querySelector('input[name="membership_plan"]:checked')?.value;
-        amt.textContent = v === 'yearly' ? '৳2,000' : (v === 'monthly' ? '৳200' : '৳0');
+        const selectedRadio = document.querySelector('input[name="membership_plan"]:checked');
+        const plan = selectedRadio ? selectedRadio.value : null;
+        
+        let initialMembershipFee = 0;
+        let totalPayable = REGISTRATION_FEE;
+
+        if (plan === 'monthly') {
+            initialMembershipFee = MONTHLY_FEE;
+        } else if (plan === 'yearly') {
+            initialMembershipFee = YEARLY_FEE;
+        }
+        
+        totalPayable += initialMembershipFee;
+
+        // Update display spans
+        membershipFeeSpan.textContent = `৳${initialMembershipFee.toLocaleString()}`;
+        payableAmountSpan.textContent = `৳${totalPayable.toLocaleString()}`;
+
+        // Ensure registration fee is always 100
+        registrationFeeInput.value = REGISTRATION_FEE;
     };
+    
+    // Add event listeners
     radios.forEach(r => r.addEventListener('change', setAmt));
+    
+    // Set initial amount on load
     setAmt();
 
-    // --- NEW: Password Toggle Logic ---
+    // --- Password Toggle Logic ---
     const setupPasswordToggle = (inputId, buttonId) => {
         const passwordInput = document.getElementById(inputId);
         const toggleButton = document.getElementById(buttonId);
 
-        if (!passwordInput || !toggleButton) return; // Exit if elements not found
+        if (!passwordInput || !toggleButton) return;
 
         const eyeIcon = toggleButton.querySelector('.eye-icon');
         const eyeSlashIcon = toggleButton.querySelector('.eye-slash-icon');

@@ -101,50 +101,71 @@
     </main>
 
     {{-- Footer --}}
-    <footer class="relative bg-gradient-to-t from-emerald-950 to-black border-t border-yellow-600/30 py-12 mt-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid md:grid-cols-4 gap-8 mb-8">
-                <div>
-                    <div class="flex items-center space-x-3 mb-4">
-                        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 p-2 rounded-lg shadow-lg">
-                            <i class="fas fa-music text-black text-xl"></i>
-                        </div>
-                        <span class="text-xl font-bold text-gradient-yellow">POJ Music</span>
+<footer class="relative bg-gradient-to-t from-emerald-950 to-black border-t border-yellow-600/30 py-12 mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+            {{-- Column 1: Logo & Tagline --}}
+            <div>
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 p-2 rounded-lg shadow-lg">
+                        <i class="fas fa-music text-black text-xl"></i>
                     </div>
-                    <p class="text-gray-400">Where passion meets melody.</p>
+                    <span class="text-xl font-bold text-gradient-yellow">POJ Music</span>
                 </div>
-                <div>
-                    <h4 class="text-yellow-500 font-bold mb-4">Quick Links</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-yellow-500">About Club</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Our Branches</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Gallery</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Contact Us</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="text-yellow-500 font-bold mb-4">Membership</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-yellow-500">View Packages</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Subscribe</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Register</a></li>
-                        <li><a href="#" class="hover:text-yellow-500">Member Login</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="text-yellow-500 font-bold mb-4">Connect With Us</h4>
-                    <div class="flex space-x-3">
-                        <a href="#" aria-label="Facebook" class="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center hover:bg-yellow-400 transition-all transform hover:scale-110 shadow-lg"><i class="fab fa-facebook-f text-black"></i></a>
-                        <a href="#" aria-label="Instagram" class="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center hover:bg-yellow-400 transition-all transform hover:scale-110 shadow-lg"><i class="fab fa-instagram text-black"></i></a>
-                        <a href="#" aria-label="YouTube" class="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center hover:bg-yellow-400 transition-all transform hover:scale-110 shadow-lg"><i class="fab fa-youtube text-black"></i></a>
-                    </div>
-                </div>
+                <p class="text-gray-400">Where passion meets melody.</p>
             </div>
-            <div class="border-t border-yellow-600/30 pt-8 text-center text-gray-400">
-                <p>&copy; {{ now()->year }} POJ Music Club. All rights reserved.</p>
+
+            {{-- Column 2: Quick Links --}}
+            <div>
+                <h4 class="text-yellow-500 font-bold mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="{{ route('privacy') }}" class="hover:text-yellow-500">Privacy Policy</a></li>
+                    <li><a href="{{ route('terms') }}" class="hover:text-yellow-500">Terms & Conditions</a></li>
+                    <li><a href="{{ route('refund.policy') }}" class="hover:text-yellow-500">Refund Policy</a></li>
+                </ul>
+            </div>
+
+            {{-- Column 3: Membership --}}
+            <div>
+                <h4 class="text-yellow-500 font-bold mb-4">Membership</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="{{ route('register') }}" class="hover:text-yellow-500">Register</a></li>
+                    <li><a href="#" class="hover:text-yellow-500">Member Login</a></li>
+                </ul>
+            </div>
+
+            {{-- Column 4: Connect With Us --}}
+            <div>
+                <h4 class="text-yellow-500 font-bold mb-4">Connect With Us</h4>
+                <div class="flex space-x-3">
+                    <a href="#" aria-label="Facebook" class="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center hover:bg-yellow-400 transition-all transform hover:scale-110 shadow-lg">
+                        <i class="fab fa-facebook-f text-black"></i>
+                    </a>
+                  
+                    
+                    <a href="#" aria-label="YouTube" class="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center hover:bg-yellow-400 transition-all transform hover:scale-110 shadow-lg">
+                        <i class="fab fa-youtube text-black"></i>
+                    </a>
+                </div>
             </div>
         </div>
-    </footer>
+
+        {{-- SSLCOMMERZ Banner --}}
+        <div class="flex justify-center mb-4">
+            <img src="{{ asset('ssl.jpg') }}" alt="SSLCOMMERZ Secure Payment" class="h-16 object-contain">
+        </div>
+        
+    </div>
+
+    {{-- FIX APPLIED: Full-Width Border and Copyright Section --}}
+    <div class="border-t border-yellow-600/30 pt-4 text-center text-gray-400">
+        {{-- Inner div to re-center the text --}}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p>&copy; {{ now()->year }} POJ Music Club. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
 
     @livewireScripts
 

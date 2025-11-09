@@ -58,8 +58,10 @@ class RegistrationController extends Controller
             $profilePath = $request->file('profile_pic')->store('members/profile_pics', 'public');
         }
 
-        // 4) Determine membership fee
-        $amount = $data['membership_plan'] === 'yearly' ? 2000.00 : 200.00;
+        // 4) Determine membership fee + registration fee
+        $REGISTRATION_FEE = 100.00; // ৳100 one-time
+        $membershipFee = $data['membership_plan'] === 'yearly' ? 2400.00 : 200.00; // matches frontend
+        $amount = $REGISTRATION_FEE + $membershipFee; // Total amount to send to SSLCommerz
 
         // 5) Hash password
         $passwordHash = Hash::make($data['password']);
@@ -69,7 +71,7 @@ class RegistrationController extends Controller
             'member_id'               => null,
             'tran_id'                 => 'INV-' . Str::uuid()->toString(),
             'plan'                    => $data['membership_plan'],
-            'amount'                  => $amount,
+            'amount'                  => $amount, // Total including registration
             'currency'                => 'BDT',
             'status'                  => 'pending',
             'full_name'               => $data['full_name'],
@@ -93,7 +95,7 @@ class RegistrationController extends Controller
             'password_hash'           => $passwordHash,
         ]);
 
-        // 7) Redirect to SSLCommerz init
+        // 7) Redirect to SSLCommerz init with correct amount
         return redirect()->route('sslc.init', [
             'tran_id' => $payment->tran_id,
         ]);

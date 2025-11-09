@@ -113,4 +113,43 @@ class Member extends Authenticatable implements FilamentUser, HasName
             $this->attributes['password'] = $value;
         }
     }
+
+    /**
+     * Relationship with payments
+     */
+    public function payments()
+    {
+        return $this->hasMany(\App\Models\MemberPayment::class, 'member_id', 'id');
+    }
+
+    /**
+     * Compute balance status (due/credit/balanced)
+     */
+public function getBalanceStatusAttribute()
+{
+    // Set total membership fee (excluding registration)
+    $totalMembershipFee = $this->membership_plan === 'monthly' ? 200 : 2400;
+
+    // Paid amount for membership (exclude registration fee)
+    $paidForMembership = $this->balance - 100; // subtract registration fee
+
+    if ($paidForMembership >= $totalMembershipFee) {
+        return [
+            'type' => 'credit',
+            'amount' => $paidForMembership - $totalMembershipFee,
+        ];
+    } elseif ($paidForMembership < $totalMembershipFee && $paidForMembership >= 0) {
+        return [
+            'type' => 'due',
+            'amount' => $totalMembershipFee - $paidForMembership,
+        ];
+    }
+
+    // Edge case: negative paidForMembership (should not happen)
+    return [
+        'type' => 'due',
+        'amount' => $totalMembershipFee,
+    ];
+}
+
 }
