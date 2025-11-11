@@ -60,6 +60,17 @@ return [
             'report' => false,
         ],
 
+// config/filesystems.php (disks array)
+   'backups' => [
+        'driver' => 'local',
+        'root' => env('BACKUP_PATH', storage_path('app/backups')),
+        'throw' => false,
+    ],
+
+
+
+
+
     ],
 
     /*

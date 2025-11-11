@@ -42,25 +42,51 @@ return [
             'synchronous' => null,
         ],
 
-        'mysql' => [
-            'driver' => 'mysql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'strict' => true,
-            'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
-        ],
+   'mysql' => [
+    'driver' => 'mysql',
+    'url' => env('DB_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '3306'),
+    'database' => env('DB_DATABASE', 'laravel'),
+    'username' => env('DB_USERNAME', 'root'),
+    'password' => env('DB_PASSWORD', ''),
+    'unix_socket' => env('DB_SOCKET', ''),
+    'charset' => env('DB_CHARSET', 'utf8mb4'),
+    'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'strict' => true,
+    'engine' => null,
+    'options' => extension_loaded('pdo_mysql') ? array_filter([
+        PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    ]) : [],
+
+    // Spatie Backup: Path to mysqldump binary
+    'dump' => [
+        // Windows example (Laragon)
+        'dump_binary_path' => env('DB_DUMP_PATH', ''), // Set in .env, e.g., C:\laragon\bin\mysql\mysql-8.0.33-winx64\bin
+        'use_single_transaction' => true,
+        'timeout' => 60 * 5,
+        'skip_comments' => true,
+        'add_extra_option' => '--skip-lock-tables', // optional, avoids lock issues
+    ],
+
+
+    /*
+     * Settings for Spatie Backup (mysqldump)
+     */
+    'dump' => [
+        // Optional: full path to mysqldump, otherwise must be in PATH
+        'dump_binary_path' => env('DB_DUMP_PATH', ''),
+
+        // Use single transaction to avoid table locks
+        'use_single_transaction' => true,
+
+        // Skip table locking for shared hosting / cPanel
+        'add_extra_option' => '--skip-lock-tables',
+    ],
+],
+
 
         'mariadb' => [
             'driver' => 'mariadb',
