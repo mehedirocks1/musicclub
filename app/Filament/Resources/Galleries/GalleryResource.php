@@ -15,6 +15,12 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
+// 👇 NEW IMPORTS FOR ACTIONS 👇
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+// 👆 NEW IMPORTS FOR ACTIONS 👆
+
 class GalleryResource extends Resource
 {
     protected static ?string $model = Gallery::class;
@@ -28,33 +34,41 @@ class GalleryResource extends Resource
         return GalleryForm::configure($schema);
     }
 
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('title')
+                    ->label('Title')
+                    ->sortable()
+                    ->searchable(),
 
+                TextColumn::make('category')
+                    ->label('Category')
+                    ->sortable(),
 
-public static function table(Table $table): Table
-{
-    return $table
-        ->columns([
-            TextColumn::make('title')
-                ->label('Title')
-                ->sortable()
-                ->searchable(),
-
-            TextColumn::make('category')
-                ->label('Category')
-                ->sortable(),
-
-            ImageColumn::make('image')
-                ->label('Image')
-                ->disk('public') // points to storage/app/public
-                ->getStateUsing(fn ($record) => $record->image ? $record->image : null)
-                ->url(fn ($record) => $record->image ? asset('storage/' . $record->image) : null)
-                ->square()
-                ->rounded(),
-        ])
-        ->filters([
-            //
-        ]);
-}
+                ImageColumn::make('image')
+                    ->label('Image')
+                    ->disk('public') // points to storage/app/public
+                    // The following line for getStateUsing is redundant if the column name matches the attribute, but kept for safety.
+                    ->getStateUsing(fn ($record) => $record->image ? $record->image : null) 
+                    ->url(fn ($record) => $record->image ? asset('storage/' . $record->image) : null)
+                    ->square()
+                    ->rounded(),
+            ])
+            ->filters([
+                //
+            ])
+            // 👇 ADDED ACTIONS 👇
+            ->actions([
+                EditAction::make(),
+                DeleteAction::make(),
+            ])
+            // 👇 ADDED BULK ACTIONS 👇
+            ->bulkActions([
+                DeleteBulkAction::make(),
+            ]);
+    }
 
 
     public static function getRelations(): array
