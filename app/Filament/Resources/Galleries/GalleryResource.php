@@ -45,9 +45,11 @@ public static function table(Table $table): Table
 
             ImageColumn::make('image')
                 ->label('Image')
-                ->getStateUsing(fn ($record) => $record->image ? asset('storage/gallaries/' . $record->image) : null)
-                ->square()       // optional, makes the preview square
-                ->rounded(),     // optional, rounded corners
+                ->disk('public') // points to storage/app/public
+                ->getStateUsing(fn ($record) => $record->image ? $record->image : null)
+                ->url(fn ($record) => $record->image ? asset('storage/' . $record->image) : null)
+                ->square()
+                ->rounded(),
         ])
         ->filters([
             //
