@@ -66,7 +66,7 @@
                 <div class="hidden lg:flex items-center space-x-1">
 <a href="{{ route('home') }}" class="px-4 py-2 rounded-lg text-yellow-500 font-medium hover:bg-emerald-900/50 transition-all transform hover:scale-105">Home</a>
     <a href="{{ route('about') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">About Club</a>
-    <a href="{{ route('branch') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Branch</a>
+    <a href="{{ route('branches') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Branch</a>
     <a href="{{ route('gallery') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Gallery</a>
     <a href="{{ route('contact') }}" class="px-4 py-2 rounded-lg font-medium hover:text-yellow-500 hover:bg-emerald-900/50 transition-all transform hover:scale-105">Contact Us</a>
 </div>
@@ -84,7 +84,7 @@
             <div id="mobileMenu" class="lg:hidden py-4 space-y-2 border-t border-yellow-600/30 hidden">
  <a href="{{ route('home') }}" class="block px-4 py-2 rounded-lg text-yellow-500 hover:bg-emerald-900/50">Home</a>
     <a href="{{ route('about') }}" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">About Club</a>
-    <a href="{{ route('branch') }}" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Branch</a>
+    <a href="{{ route('branches') }}" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Branch</a>
     <a href="{{ route('gallery') }}" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Gallery</a>
     <a href="{{ route('contact') }}" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Contact Us</a>
                 <a href="#" class="block px-4 py-2 rounded-lg hover:text-yellow-500 hover:bg-emerald-900/50">Login</a>

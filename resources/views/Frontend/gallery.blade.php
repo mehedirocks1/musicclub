@@ -20,19 +20,9 @@
 
         {{-- Masonry --}}
         <div id="galleryGrid" class="mt-8 columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
-            @php
-            $items = [
-                ['src'=>'https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1200&auto=format&fit=crop','cat'=>'live','alt'=>'Live guitar'],
-                ['src'=>'https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?q=80&w=1200&auto=format&fit=crop','cat'=>'workshop','alt'=>'Workshop keyboard'],
-                ['src'=>'https://images.unsplash.com/photo-1511379938547-0f3f5c8bd0f9?q=80&w=1200&auto=format&fit=crop','cat'=>'members','alt'=>'Members jam'],
-                ['src'=>'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1200&auto=format&fit=crop','cat'=>'live','alt'=>'Stage lights'],
-                ['src'=>'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=1200&auto=format&fit=crop','cat'=>'workshop','alt'=>'Drums'],
-                ['src'=>'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?q=80&w=1200&auto=format&fit=crop','cat'=>'members','alt'=>'Crowd'],
-            ];
-            @endphp
-            @foreach($items as $i)
-            <figure class="break-inside-avoid mb-4 overflow-hidden rounded-xl group cursor-pointer" data-cat="{{ $i['cat'] }}">
-                <img src="{{ $i['src'] }}" alt="{{ $i['alt'] }}" class="w-full object-cover transition-transform duration-300 group-hover:scale-105">
+            @foreach($galleries as $item)
+            <figure class="break-inside-avoid mb-4 overflow-hidden rounded-xl group cursor-pointer" data-cat="{{ $item->category }}">
+                <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->title }}" class="w-full object-cover transition-transform duration-300 group-hover:scale-105">
             </figure>
             @endforeach
         </div>
