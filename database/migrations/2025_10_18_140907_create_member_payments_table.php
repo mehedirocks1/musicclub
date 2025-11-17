@@ -8,75 +8,65 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('member_payments', function (Blueprint $t) {
-            $t->id();
+        Schema::create('member_payments', function (Blueprint $table) {
+            $table->id();
 
-            // members relation
-            // USE nullOnDelete() TO PRESERVE PAYMENT HISTORY
-            $t->foreignId('member_id')
+            // Member relation (nullable to preserve payment history)
+            $table->foreignId('member_id')
                 ->nullable()
                 ->constrained('members')
-                ->nullOnDelete(); // <-- This is the only critical change needed
+                ->nullOnDelete();
 
-            // Optional package relation (no constraint)
-            $t->unsignedBigInteger('package_id')->nullable();
-            $t->index('package_id');
-
-            // Optional package snapshot
-            $t->string('package_name')->nullable();
+            // Optional package info
+            $table->unsignedBigInteger('package_id')->nullable();
+            $table->string('package_name')->nullable();
+            $table->index('package_id');
 
             // Transaction info
-            $t->string('tran_id')->unique();
-            $t->enum('plan', ['monthly', 'yearly'])->nullable();
-            $t->decimal('amount', 12, 2);
-            $t->string('currency', 8)->default('BDT');
-            $t->enum('status', [
-                'pending',
-                'paid',
-                'failed',
-                'cancelled',
-                'validation_failed'
-            ])->default('pending');
+            $table->string('tran_id')->unique();
+            $table->enum('plan', ['monthly', 'yearly'])->nullable();
+            $table->decimal('amount', 12, 2);
+            $table->string('currency', 8)->default('BDT');
+            $table->enum('status', ['pending','paid','failed','cancelled','validation_failed'])->default('pending');
 
             // Gateway response
-            $t->string('bank_tran_id')->nullable();
-            $t->string('val_id')->nullable();
-            $t->string('card_type')->nullable();
+            $table->string('bank_tran_id')->nullable();
+            $table->string('val_id')->nullable();
+            $table->string('card_type')->nullable();
 
-            // Member snapshot (all nullable to support both flows)
-            $t->string('full_name')->nullable();
-            $t->string('name_bn')->nullable();
-            $t->string('username')->nullable();
-            $t->string('email')->nullable();
-            $t->string('phone', 30)->nullable();
-            $t->date('dob')->nullable();
-            $t->string('gender', 15)->nullable();
-            $t->string('blood_group', 5)->nullable();
-            $t->string('id_number')->nullable();
-            $t->string('education_qualification')->nullable();
-            $t->string('profession')->nullable();
-            $t->text('other_expertise')->nullable();
-            $t->string('country')->nullable();
-            $t->string('division')->nullable();
-            $t->string('district')->nullable();
-            $t->text('address')->nullable();
-            $t->string('membership_type')->nullable();
-            $t->string('profile_pic')->nullable();
+            // Member snapshot (nullable to support both members & subscribers)
+            $table->string('full_name')->nullable();
+            $table->string('name_bn')->nullable();
+            $table->string('username')->nullable();
+            $table->string('email')->nullable();
+            $table->string('phone', 30)->nullable();
+            $table->date('dob')->nullable();
+            $table->string('gender', 15)->nullable();
+            $table->string('blood_group', 5)->nullable();
+            $table->string('id_number')->nullable();
+            $table->string('education_qualification')->nullable();
+            $table->string('profession')->nullable();
+            $table->text('other_expertise')->nullable();
+            $table->string('country')->nullable();
+            $table->string('division')->nullable();
+            $table->string('district')->nullable();
+            $table->text('address')->nullable();
+            $table->string('membership_type')->nullable();
+            $table->string('profile_pic')->nullable();
 
-            // Persisted hashed password (nullable for Subscribers)
-            $t->string('password_hash')->nullable();
+            // Persisted password hash (nullable for subscribers)
+            $table->string('password_hash')->nullable();
 
-            // Gateway payload (raw response data)
-            $t->json('gateway_payload')->nullable();
+            // Raw gateway response
+            $table->json('gateway_payload')->nullable();
 
-            // Meta info
-            $t->softDeletes();
-            $t->timestamps();
+            // Meta
+            $table->softDeletes();
+            $table->timestamps();
 
             // Helpful indexes
-            $t->index(['member_id']);
-            $t->index(['status', 'plan']);
-            // $t->index(['tran_id']); // ->unique() already adds an index
+            $table->index(['member_id']);
+            $table->index(['status', 'plan']);
         });
     }
 

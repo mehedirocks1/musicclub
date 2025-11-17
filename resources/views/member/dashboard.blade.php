@@ -107,18 +107,51 @@
                 <span class="text-white font-semibold">{{ $member->membership_type }}</span>
             </div>
 
-            <!-- Updated Balance Section -->
+            <!-- Corrected Balance Section -->
+            @php
+                use App\Models\Payments;
+                use Carbon\Carbon;
+
+                $registrationFee = 100;
+                $monthlyFee = 200;
+                $yearlyFee = 2400;
+
+                $registrationDate = Carbon::parse($member->registration_date);
+                $now = Carbon::now();
+
+                $totalFeeRequired = $registrationFee;
+
+                if ($member->membership_plan === 'monthly') {
+                    $monthsToCharge = $registrationDate->copy()->startOfMonth()->diffInMonths($now->copy()->startOfMonth()) + 1;
+                    $totalFeeRequired += $monthsToCharge * $monthlyFee;
+                } elseif ($member->membership_plan === 'yearly') {
+                    $yearsToCharge = $registrationDate->copy()->startOfYear()->diffInYears($now->copy()->startOfYear()) + 1;
+                    $totalFeeRequired += $yearsToCharge * $yearlyFee;
+                }
+
+                $totalPaid = Payments::where('member_id', $member->id)
+                    ->where('status', 'paid')
+                    ->sum('amount');
+
+                $balanceAmount = $totalPaid - $totalFeeRequired;
+
+                if ($balanceAmount > 0) {
+                    $balanceStatus = ['type' => 'credit', 'amount' => $balanceAmount];
+                } elseif ($balanceAmount < 0) {
+                    $balanceStatus = ['type' => 'due', 'amount' => abs($balanceAmount)];
+                } else {
+                    $balanceStatus = ['type' => 'balanced', 'amount' => 0];
+                }
+            @endphp
+
             <div class="flex flex-col">
                 <span class="text-gray-400 font-medium">Balance</span>
                 <span class="text-white font-semibold">
-                    {{ number_format($member->balance, 2) }} BDT
-                    @php
-                        $status = $member->balance_status;
-                    @endphp
-                    @if($status['type'] === 'credit')
-                        <span class="text-green-400">(Credit: {{ number_format($status['amount'], 2) }} BDT)</span>
-                    @elseif($status['type'] === 'due')
-                        <span class="text-red-400">(Due: {{ number_format($status['amount'], 2) }} BDT)</span>
+                   Total Paid {{ number_format($totalPaid, 2) }} BDT
+                    @if($balanceStatus['type'] === 'credit')
+                        <span class="text-green-400">(Credit: {{ number_format($balanceStatus['amount'], 2) }} BDT)</span>
+                    @elseif($balanceStatus['type'] === 'due')
+                        <span class="text-red-400">(Due: {{ number_format($balanceStatus['amount'], 2) }} BDT)</span>
                     @else
                         <span class="text-gray-400">(Balanced)</span>
                     @endif

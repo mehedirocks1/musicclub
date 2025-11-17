@@ -159,176 +159,178 @@ class SslcommerzController extends Controller
     public function failure(Request $request) { $this->mark($request->input('tran_id'), 'failed'); return redirect()->route('home')->with('error','Payment Failed'); }
     public function cancel(Request $request) { $this->mark($request->input('tran_id'), 'cancelled'); return redirect()->route('home')->with('warning','Payment Cancelled'); }
     public function ipn(Request $request) { return $this->finalize($request, 'ipn'); }
+protected function finalize(Request $request, string $source)
+{
+    $tranId = $request->input('tran_id');
+    if (!$tranId) return $this->finalizeResponse($source, false, 'Invalid callback');
 
-    protected function finalize(Request $request, string $source)
-    {
-        $tranId = $request->input('tran_id');
-        if (!$tranId) return $this->finalizeResponse($source, false, 'Invalid callback');
+    $payment = MemberPayment::where('tran_id', $tranId)->first();
+    if (!$payment) return $this->finalizeResponse($source, false, 'Unknown transaction');
+    if ($payment->status === 'paid') return $this->finalizeResponse($source, true, 'Already processed');
 
-        $payment = MemberPayment::where('tran_id', $tranId)->first();
-        if (!$payment) return $this->finalizeResponse($source, false, 'Unknown transaction');
-        if ($payment->status === 'paid') return $this->finalizeResponse($source, true, 'Already processed');
+    $isValid = Sslcommerz::validatePayment($request->all(), $tranId, $payment->amount);
 
-        $isValid = Sslcommerz::validatePayment($request->all(), $tranId, $payment->amount);
-
-        $reqCurrency = $request->input('currency');
-        $storeCurrency = config('sslcommerz.store.currency', 'BDT');
-        if ($isValid && $reqCurrency && strtoupper($reqCurrency) !== strtoupper($storeCurrency)) {
-            $isValid = false;
-            Log::warning('SSL finalize: currency mismatch', compact('tranId','reqCurrency','storeCurrency'));
-        }
-
-        if (!$isValid) {
-            $payment->update(['status' => 'validation_failed', 'gateway_payload' => $request->all()]);
-            return $this->finalizeResponse($source, false, 'Validation failed');
-        }
-
-        try {
-            $smsCtx = ['phone' => null, 'member_id' => null, 'subscriber_id' => null, 'amount' => null];
-
-            DB::transaction(function () use ($payment, $request, &$smsCtx, $tranId) {
-
-                if ($payment->package_id) {
-                    // Subscriber payment
-                    $subscriber = \Modules\Subscribers\Models\Subscriber::updateOrCreate(
-                        ['email' => $payment->email ?: $payment->phone],
-                        [
-                            'full_name' => $payment->full_name,
-                            'username' => $payment->username,
-                            'phone' => $payment->phone,
-                            'profile_pic' => $payment->profile_pic,
-                            'dob' => $payment->dob,
-                            'gender' => $payment->gender,
-                            'blood_group' => $payment->blood_group,
-                            'id_number' => $payment->id_number,
-                            'education' => $payment->education_qualification,
-                            'profession' => $payment->profession,
-                            'other_expertise' => $payment->other_expertise,
-                            'country' => $payment->country ?: 'Bangladesh',
-                            'division' => $payment->division,
-                            'district' => $payment->district,
-                            'address' => $payment->address,
-                            'status' => 'active',
-                            'package_title' => $payment->package_name,
-                            'fee_type' => $payment->plan,
-                            'fee_amount' => $payment->amount,
-                            'last_payment_amount' => $payment->amount,
-                            'last_payment_tran_id' => $payment->tran_id,
-                            'last_payment_at' => now(),
-                            'last_payment_gateway' => 'sslcommerz',
-                        ]
-                    );
-
-                    $payment->update([
-                        'status' => 'paid',
-                        'member_id' => null,
-                        'gateway_payload' => $request->all(),
-                        'bank_tran_id' => $request->input('bank_tran_id'),
-                        'val_id' => $request->input('val_id'),
-                        'card_type' => $request->input('card_type'),
-                    ]);
-
-                    $smsCtx['phone'] = $subscriber->phone;
-                    $smsCtx['subscriber_id'] = $subscriber->subscriber_id;
-                    $smsCtx['amount'] = $payment->amount;
-
-                } else {
-                    // Member registration / fee
-                    $member = Member::find($payment->member_id);
-
-                    if ($member) {
-                        // Existing member fee
-                        $member->balance += $payment->amount;
-                        $member->last_payment_amount = $payment->amount;
-                        $member->last_payment_tran_id = $payment->tran_id;
-                        $member->last_payment_at = now();
-                        $member->last_payment_gateway = 'sslcommerz';
-                        $member->save();
-                    } else {
-                        // New member registration
-                        $memberPasswordHash = $payment->password_hash ?? session()->pull("reg:{$tranId}.password") ?? Hash::make(Str::random(12));
-                        $expiresAt = $payment->plan === 'yearly' ? now()->addYear() : now()->addMonth();
-
-                        $nextMemberId = DB::table('members')->lockForUpdate()->max('member_id');
-                        $nextMemberId = $nextMemberId ? $nextMemberId + 1 : 1;
-
-                        $member = Member::create([
-                            'profile_pic' => $payment->profile_pic,
-                            'member_id' => $nextMemberId,
-                            'username' => $payment->username,
-                            'name_bn' => $payment->name_bn,
-                            'full_name' => $payment->full_name ?: 'Member',
-                            'email' => $payment->email,
-                            'phone' => $payment->phone,
-                            'password' => $memberPasswordHash,
-                            'dob' => $payment->dob,
-                            'id_number' => $payment->id_number,
-                            'gender' => $payment->gender,
-                            'blood_group' => $payment->blood_group,
-                            'education_qualification' => $payment->education_qualification,
-                            'profession' => $payment->profession,
-                            'other_expertise' => $payment->other_expertise,
-                            'country' => $payment->country ?: 'Bangladesh',
-                            'division' => $payment->division,
-                            'district' => $payment->district,
-                            'address' => $payment->address,
-                            'membership_type' => $payment->membership_type ?: 'Student',
-                            'registration_date' => now(),
-                            'balance' => $payment->amount,
-                            'membership_plan' => $payment->plan,
-                            'membership_status' => 'active',
-                            'membership_started_at' => now(),
-                            'membership_expires_at' => $expiresAt,
-                            'last_payment_amount' => $payment->amount,
-                            'last_payment_tran_id' => $payment->tran_id,
-                            'last_payment_at' => now(),
-                            'last_payment_gateway' => 'sslcommerz',
-                        ]);
-                    }
-
-                    // Only create payments record for successful transaction
-                    $payment->update([
-                        'status' => 'paid',
-                        'member_id' => $member->id,
-                        'gateway_payload' => $request->all(),
-                        'bank_tran_id' => $request->input('bank_tran_id'),
-                        'val_id' => $request->input('val_id'),
-                        'card_type' => $request->input('card_type'),
-                    ]);
-
-                    Payments::create([
-                        'member_id' => $member->id,
-                        'tran_id' => $payment->tran_id,
-                        'amount' => $payment->amount,
-                        'currency' => 'BDT',
-                        'status' => 'paid',
-                        'method' => 'sslcommerz',
-                        'transaction_id' => $request->input('bank_tran_id') ?? $request->input('val_id'),
-                        'note' => 'Membership payment',
-                    ]);
-
-                    $smsCtx['phone'] = $member->phone;
-                    $smsCtx['member_id'] = $member->member_id;
-                    $smsCtx['amount'] = $payment->amount;
-                }
-            });
-
-            if (!empty($smsCtx['phone']) && !empty($smsCtx['amount'])) {
-                $to = $this->normalizeBdMsisdn($smsCtx['phone']);
-                $amt = number_format((float)$smsCtx['amount'], 2);
-                $msg = "Welcome to POJ Music Club\nYou paid BDT {$amt}";
-                if (!empty($smsCtx['member_id'])) $msg .= "\nMember ID: {$smsCtx['member_id']}";
-                if (!empty($smsCtx['subscriber_id'])) $msg .= "\nSubscriber ID: {$smsCtx['subscriber_id']}";
-                Textify::to($to)->message($msg)->via('bulksmsbd')->send();
-            }
-
-            return $this->finalizeResponse($source, true, 'Payment Success');
-
-        } catch (\Throwable $e) {
-            Log::error('SSL finalize: DB error', ['tran_id' => $tranId, 'error' => $e->getMessage()]);
-            return $this->finalizeResponse($source, false, 'Server error');
-        }
+    $reqCurrency = $request->input('currency');
+    $storeCurrency = config('sslcommerz.store.currency', 'BDT');
+    if ($isValid && $reqCurrency && strtoupper($reqCurrency) !== strtoupper($storeCurrency)) {
+        $isValid = false;
+        Log::warning('SSL finalize: currency mismatch', compact('tranId','reqCurrency','storeCurrency'));
     }
+
+    if (!$isValid) {
+        $payment->update(['status' => 'validation_failed', 'gateway_payload' => $request->all()]);
+        return $this->finalizeResponse($source, false, 'Validation failed');
+    }
+
+    try {
+        $smsCtx = ['phone' => null, 'member_id' => null, 'subscriber_id' => null, 'amount' => null];
+
+        DB::transaction(function () use ($payment, $request, &$smsCtx, $tranId) {
+
+            if ($payment->package_id) {
+                // --- Subscriber / Package Payment ---
+                $subscriber = \Modules\Subscribers\Models\Subscriber::updateOrCreate(
+                    ['email' => $payment->email ?: $payment->phone],
+                    [
+                        'full_name' => $payment->full_name,
+                        'username' => $payment->username,
+                        'phone' => $payment->phone,
+                        'profile_pic' => $payment->profile_pic,
+                        'dob' => $payment->dob,
+                        'gender' => $payment->gender,
+                        'blood_group' => $payment->blood_group,
+                        'id_number' => $payment->id_number,
+                        'education' => $payment->education_qualification,
+                        'profession' => $payment->profession,
+                        'other_expertise' => $payment->other_expertise,
+                        'country' => $payment->country ?: 'Bangladesh',
+                        'division' => $payment->division,
+                        'district' => $payment->district,
+                        'address' => $payment->address,
+                        'status' => 'active',
+                        'package_title' => $payment->package_name,
+                        'fee_type' => $payment->plan,
+                        'fee_amount' => $payment->amount,
+                        'last_payment_amount' => $payment->amount,
+                        'last_payment_tran_id' => $payment->tran_id,
+                        'last_payment_at' => now(),
+                        'last_payment_gateway' => 'sslcommerz',
+                    ]
+                );
+
+                $payment->update([
+                    'status' => 'paid',
+                    'member_id' => null,
+                    'gateway_payload' => $request->all(),
+                    'bank_tran_id' => $request->input('bank_tran_id'),
+                    'val_id' => $request->input('val_id'),
+                    'card_type' => $request->input('card_type'),
+                ]);
+
+                $smsCtx['phone'] = $subscriber->phone;
+                $smsCtx['subscriber_id'] = $subscriber->subscriber_id;
+                $smsCtx['amount'] = $payment->amount;
+
+            } else {
+                // --- Member Payment ---
+                $member = Member::find($payment->member_id);
+
+                if (!$member) {
+                    // New member registration
+                    $memberPasswordHash = $payment->password_hash ?? session()->pull("reg:{$tranId}.password") ?? Hash::make(Str::random(12));
+                    $expiresAt = $payment->plan === 'yearly' ? now()->addYear() : now()->addMonth();
+
+                    $nextMemberId = DB::table('members')->lockForUpdate()->max('member_id') ?: 0;
+                    $nextMemberId++;
+
+                    $member = Member::create([
+                        'profile_pic' => $payment->profile_pic,
+                        'member_id' => $nextMemberId,
+                        'username' => $payment->username,
+                        'name_bn' => $payment->name_bn,
+                        'full_name' => $payment->full_name ?: 'Member',
+                        'email' => $payment->email,
+                        'phone' => $payment->phone,
+                        'password' => $memberPasswordHash,
+                        'dob' => $payment->dob,
+                        'id_number' => $payment->id_number,
+                        'gender' => $payment->gender,
+                        'blood_group' => $payment->blood_group,
+                        'education_qualification' => $payment->education_qualification,
+                        'profession' => $payment->profession,
+                        'other_expertise' => $payment->other_expertise,
+                        'country' => $payment->country ?: 'Bangladesh',
+                        'division' => $payment->division,
+                        'district' => $payment->district,
+                        'address' => $payment->address,
+                        'membership_type' => $payment->membership_type ?: 'Student',
+                        'registration_date' => now(),
+                        'balance' => $payment->amount,
+                        'membership_plan' => $payment->plan,
+                        'membership_status' => 'active',
+                        'membership_started_at' => now(),
+                        'membership_expires_at' => $expiresAt,
+                        'last_payment_amount' => $payment->amount,
+                        'last_payment_tran_id' => $payment->tran_id,
+                        'last_payment_at' => now(),
+                        'last_payment_gateway' => 'sslcommerz',
+                    ]);
+                } else {
+                    // Existing member recurring payment
+                    $member->balance += $payment->amount;
+                    $member->last_payment_amount = $payment->amount;
+                    $member->last_payment_tran_id = $payment->tran_id;
+                    $member->last_payment_at = now();
+                    $member->last_payment_gateway = 'sslcommerz';
+                    $member->save();
+                }
+
+                // Update the original MemberPayment record
+                $payment->update([
+                    'status' => 'paid',
+                    'member_id' => $member->id,
+                    'gateway_payload' => $request->all(),
+                    'bank_tran_id' => $request->input('bank_tran_id'),
+                    'val_id' => $request->input('val_id'),
+                    'card_type' => $request->input('card_type'),
+                ]);
+
+                // Store in Payments table
+                Payments::create([
+                    'member_id' => $member->id,
+                    'tran_id' => $payment->tran_id,
+                    'amount' => $payment->amount,
+                    'currency' => 'BDT',
+                    'status' => 'paid',
+                    'method' => 'sslcommerz',
+                    'transaction_id' => $request->input('bank_tran_id') ?? $request->input('val_id'),
+                    'note' => 'Membership payment',
+                ]);
+
+                $smsCtx['phone'] = $member->phone;
+                $smsCtx['member_id'] = $member->member_id;
+                $smsCtx['amount'] = $payment->amount;
+            }
+        });
+
+        // Send SMS
+        if (!empty($smsCtx['phone']) && !empty($smsCtx['amount'])) {
+            $to = $this->normalizeBdMsisdn($smsCtx['phone']);
+            $amt = number_format((float)$smsCtx['amount'], 2);
+            $msg = "Welcome to POJ Music Club\nYou paid BDT {$amt}";
+            if (!empty($smsCtx['member_id'])) $msg .= "\nMember ID: {$smsCtx['member_id']}";
+            if (!empty($smsCtx['subscriber_id'])) $msg .= "\nSubscriber ID: {$smsCtx['subscriber_id']}";
+            Textify::to($to)->message($msg)->via('bulksmsbd')->send();
+        }
+
+        return $this->finalizeResponse($source, true, 'Payment Success');
+
+    } catch (\Throwable $e) {
+        Log::error('SSL finalize: DB error', ['tran_id' => $tranId, 'error' => $e->getMessage()]);
+        return $this->finalizeResponse($source, false, 'Server error');
+    }
+}
+
 
     protected function mark(?string $tranId, string $status): void
     {
@@ -358,6 +360,6 @@ class SslcommerzController extends Controller
 
     private function getMembershipAmount(string $plan): float
     {
-        return $plan === 'yearly' ? 2000.00 : 200.00;
+        return $plan === 'yearly' ? 2400.00 : 200.00;
     }
 }

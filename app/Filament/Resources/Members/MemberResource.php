@@ -29,8 +29,7 @@ use BackedEnum;
 use Filament\Panel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-
-// Added for the header action
+use App\Models\Payments;
 use Filament\Tables\Contracts\HasTable;
 
 class MemberResource extends Resource
@@ -134,7 +133,6 @@ class MemberResource extends Resource
                     ->default(0.00)
                     ->prefix('৳'),
 
-                // Keep account-level status editable in form
                 Select::make('status')
                     ->label('Account Status')
                     ->options([
@@ -164,19 +162,13 @@ class MemberResource extends Resource
                     default => 'gray',
                 }),
 
-                // membership_status as inline select (allows pending/active/expired/inactive)
                 SelectColumn::make('membership_status')
                     ->label('Membership Status')
                     ->options(array_combine(Member::MEMBERSHIP_STATUS, Member::MEMBERSHIP_STATUS))
                     ->sortable()
                     ->searchable()
-                    // save selected enum string directly to DB
-                    ->action(function (Member $record, $state) {
-                        // $state contains the chosen option string (e.g., 'pending','active', etc.)
-                        $record->update(['membership_status' => $state]);
-                    }),
+                    ->action(fn(Member $record, $state) => $record->update(['membership_status' => $state])),
 
-                // account-level status as a toggle (active/inactive)
                 ToggleColumn::make('status')
                     ->label('Account Status')
                     ->onIcon('heroicon-o-check-circle')
@@ -185,62 +177,83 @@ class MemberResource extends Resource
                     ->offColor('danger')
                     ->sortable()
                     ->getStateUsing(fn(Member $record) => $record->status === 'active')
-                    ->action(function (Member $record, bool $state) {
-                        $value = $state ? 'active' : 'inactive';
-                        $record->update(['status' => $value]);
-                    }),
+                    ->action(fn(Member $record, bool $state) => $record->update(['status' => $state ? 'active' : 'inactive'])),
 
+                // B-E-G-I-N C-O-R-R-E-C-T-E-D L-O-G-I-C
                 TextColumn::make('balance_status')
                     ->label('Balance / Due')
-                    ->getStateUsing(function (Member $record): string {
-                        $monthlyFee = 200.00;
-                        $yearlyFee = 2400.00;
-                        $registrationFee = 100.00;
+                    ->getStateUsing(function (Member $record) {
+                        // Fees as per your new rules
+                        $registrationFee = 100; // 100 ৳ one-time fee
+                        $monthlyFee = 200;
+                        $yearlyFee = 2400;
 
                         $registrationDate = Carbon::parse($record->registration_date);
                         $now = Carbon::now();
-                        $totalFeeRequired = $registrationFee;
+                        
+                        // Start with the one-time registration fee
+                        $totalFeeRequired = $registrationFee; 
 
                         if ($record->membership_plan === 'monthly') {
-                            $monthsPassed = $registrationDate->diffInMonths($now);
-                            if ($now->day >= $registrationDate->day) $monthsPassed++;
-                            $totalFeeRequired += max(0, $monthsPassed) * $monthlyFee;
+                            // Calculate months to charge, including the registration month
+                            $startMonth = $registrationDate->copy()->startOfMonth();
+                            $currentMonth = $now->copy()->startOfMonth();
+                            
+                            // Get the difference in months and add 1 to include the current month
+                            $monthsToCharge = $startMonth->diffInMonths($currentMonth) + 1;
+                            
+                            $totalFeeRequired += $monthsToCharge * $monthlyFee;
+
                         } elseif ($record->membership_plan === 'yearly') {
-                            $yearsPassed = $registrationDate->diffInYears($now);
-                            if ($now->month > $registrationDate->month || ($now->month === $registrationDate->month && $now->day >= $registrationDate->day)) $yearsPassed++;
-                            $totalFeeRequired += max(0, $yearsPassed) * $yearlyFee;
+                            // Calculate years to charge, including the registration year
+                            $startYear = $registrationDate->copy()->startOfYear();
+                            $currentYear = $now->copy()->startOfYear();
+                            
+                            // Get the difference in years and add 1 to include the current year
+                            $yearsToCharge = $startYear->diffInYears($currentYear) + 1;
+                            
+                            $totalFeeRequired += $yearsToCharge * $yearlyFee;
                         }
 
-                        $due = $totalFeeRequired - ($record->balance ?? 0.00);
+                        // Get total amount paid from the Payments table
+                        $totalPaid = Payments::where('member_id', $record->id)
+                            ->where('status', 'paid')
+                            ->sum('amount');
 
+                        // Calculate the final balance
+                        $balance = $totalPaid - $totalFeeRequired;
+
+                        // Format the output
                         return match (true) {
-                            $due > 0 => number_format($due, 2) . ' ৳ Due',
-                            $due < 0 => number_format(abs($due), 2) . ' ৳ Credit',
+                            $balance > 0 => number_format($balance, 0) . ' ৳ Credit',
+                            $balance < 0 => number_format(abs($balance), 0) . ' ৳ Due',
                             default => 'Cleared',
                         };
                     })
                     ->sortable(false)
-                    ->searchable(false)
                     ->badge()
                     ->color(fn ($state) => match (true) {
                         str_contains($state, 'Due') => 'danger',
                         str_contains($state, 'Credit') => 'success',
                         default => 'gray',
                     }),
+                // E-N-D C-O-R-R-E-C-T-E-D L-O-G-I-C
 
-                TextColumn::make('balance')->money('BDT')->label('Paid Balance'),
+                TextColumn::make('paid_balance')
+                    ->label('Paid Balance')
+                    ->getStateUsing(fn(Member $record) => number_format(Payments::where('member_id', $record->id)->where('status', 'paid')->sum('amount'), 0) . ' ৳')
+                    ->sortable(),
+
                 TextColumn::make('registration_date')->date('d M Y'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('membership_type')
                     ->options(array_combine(Member::MEMBERSHIP_TYPES, Member::MEMBERSHIP_TYPES)),
 
-                // membership_status filter (shows enum values)
                 Tables\Filters\SelectFilter::make('membership_status')
                     ->label('Membership Status')
                     ->options(array_combine(Member::MEMBERSHIP_STATUS, Member::MEMBERSHIP_STATUS)),
 
-                // account-level status filter
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Account Status')
                     ->options([
@@ -248,14 +261,13 @@ class MemberResource extends Resource
                         'inactive' => 'Inactive',
                     ]),
             ])
-            // *** MOVED THE ACTION HERE ***
-->headerActions([
-    \Filament\Actions\Action::make('download_excel')
-        ->label('Download Excel')
-        ->icon('heroicon-o-arrow-down-tray')
-        ->color('success')
-        ->requiresConfirmation()
-        ->url(fn () => route('members.export')), 
+            ->headerActions([
+                \Filament\Actions\Action::make('download_excel')
+                    ->label('Download Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->url(fn () => route('members.export')),
             ])
             ->actions([
                 \Filament\Actions\ActionGroup::make([
@@ -266,101 +278,142 @@ class MemberResource extends Resource
                     \Filament\Actions\Action::make('generate_id_card')
                         ->label('ID Card')
                         ->icon('heroicon-o-identification')
-                        ->color('info') // Or 'success', 'warning', etc.
+                        ->color('info')
                         ->action(function (Member $record): StreamedResponse {
-                            
-                            // 1. Prepare the data (using the $record from the table row)
                             $data['allData'] = $record;
-
-                            // 2. Load the view and set options
-                            // (I've added 'isRemoteEnabled' => true, which you need for Google Fonts)
                             $pdf = Pdf::loadView('backend.member-card', $data)
-                                ->setOptions([
-                                    'defaultFont' => 'sans-serif',
-                                    'isRemoteEnabled' => true 
-                                ]);
-
-                            // 3. Set a dynamic filename
+                                ->setOptions(['defaultFont' => 'sans-serif','isRemoteEnabled' => true]);
                             $filename = 'id-card-' . $record->member_id . '-' . $record->full_name . '.pdf';
-
-                            // 4. Return a StreamedResponse to download the file
-                            return response()->streamDownload(
-                                fn () => print($pdf->output()),
-                                $filename
-                            );
+                            return response()->streamDownload(fn () => print($pdf->output()), $filename);
                         }),
 
-                    // Send Due SMS
-                    \Filament\Actions\Action::make('send_due_sms')
-                        ->label('Send Due SMS')
-                        ->icon('heroicon-o-chat-bubble-left-right')
-                        ->color('primary')
-                        ->requiresConfirmation()
-                        ->action(function (Member $record) {
-                            $due = $record->balance_status; // use your balance_status calculation
-                            $phone = $record->phone;
-                            if (!$phone) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('No phone number found')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+\Filament\Actions\Action::make('send_due_sms')
+    ->label('Send Due SMS')
+    ->icon('heroicon-o-chat-bubble-left-right')
+    ->color('primary')
+    ->requiresConfirmation()
+    ->action(function (Member $record) {
+        $phone = $record->phone;
 
-                            $msg = "Dear {$record->full_name}, your current due is {$due}. Member ID: {$record->member_id}";
+        if (!$phone) {
+            \Filament\Notifications\Notification::make()
+                ->title('No phone number found')
+                ->danger()
+                ->send();
+            return;
+        }
 
-                            try {
-                                \DevWizard\Textify\Facades\Textify::to($phone)
-                                    ->message($msg)
-                                    ->via('bulksmsbd')
-                                    ->send();
+        // Calculate due/credit exactly like the table logic
+        $registrationFee = 100;
+        $monthlyFee = 200;
+        $yearlyFee = 2400;
 
-                                \Filament\Notifications\Notification::make()
-                                    ->title('SMS sent successfully')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $e) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Failed to send SMS')
-                                    ->body($e->getMessage())
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
+        $registrationDate = Carbon::parse($record->registration_date);
+        $now = Carbon::now();
 
-                    // Send Due Email
-                    \Filament\Actions\Action::make('send_due_email')
-                        ->label('Send Due Email')
-                        ->icon('heroicon-o-envelope')
-                        ->color('secondary')
-                        ->requiresConfirmation()
-                        ->action(function (Member $record) {
-                            $due = $record->balance_status;
-                            $email = $record->email;
-                            if (!$email) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('No email found')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+        $totalFeeRequired = $registrationFee;
 
-                            try {
-                                \Illuminate\Support\Facades\Mail::to($email)
-                                    ->send(new \App\Mail\DueReminderMail($record, $due));
+        if ($record->membership_plan === 'monthly') {
+            $monthsToCharge = $registrationDate->copy()->startOfMonth()->diffInMonths($now->copy()->startOfMonth()) + 1;
+            $totalFeeRequired += $monthsToCharge * $monthlyFee;
+        } elseif ($record->membership_plan === 'yearly') {
+            $yearsToCharge = $registrationDate->copy()->startOfYear()->diffInYears($now->copy()->startOfYear()) + 1;
+            $totalFeeRequired += $yearsToCharge * $yearlyFee;
+        }
 
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Email sent successfully')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $e) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Failed to send email')
-                                    ->body($e->getMessage())
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
+        $totalPaid = Payments::where('member_id', $record->id)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $balance = $totalPaid - $totalFeeRequired;
+
+        $dueText = match (true) {
+            $balance > 0 => number_format($balance, 0) . ' ৳ Credit',
+            $balance < 0 => number_format(abs($balance), 0) . ' ৳ Due',
+            default => 'Cleared',
+        };
+
+        $msg = "Dear {$record->full_name}, your current balance is {$dueText}. Member ID: {$record->member_id}";
+
+        try {
+            \DevWizard\Textify\Facades\Textify::to($phone)->message($msg)->via('bulksmsbd')->send();
+            \Filament\Notifications\Notification::make()
+                ->title('SMS sent successfully')
+                ->success()
+                ->send();
+        } catch (\Throwable $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Failed to send SMS')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }),
+
+\Filament\Actions\Action::make('send_due_email')
+    ->label('Send Due Email')
+    ->icon('heroicon-o-envelope')
+    ->color('secondary')
+    ->requiresConfirmation()
+    ->action(function (Member $record) {
+        $email = $record->email;
+
+        if (!$email) {
+            \Filament\Notifications\Notification::make()
+                ->title('No email found')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Calculate due/credit exactly like the table logic
+        $registrationFee = 100;
+        $monthlyFee = 200;
+        $yearlyFee = 2400;
+
+        $registrationDate = Carbon::parse($record->registration_date);
+        $now = Carbon::now();
+
+        $totalFeeRequired = $registrationFee;
+
+        if ($record->membership_plan === 'monthly') {
+            $monthsToCharge = $registrationDate->copy()->startOfMonth()->diffInMonths($now->copy()->startOfMonth()) + 1;
+            $totalFeeRequired += $monthsToCharge * $monthlyFee;
+        } elseif ($record->membership_plan === 'yearly') {
+            $yearsToCharge = $registrationDate->copy()->startOfYear()->diffInYears($now->copy()->startOfYear()) + 1;
+            $totalFeeRequired += $yearsToCharge * $yearlyFee;
+        }
+
+        $totalPaid = Payments::where('member_id', $record->id)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $balance = $totalPaid - $totalFeeRequired;
+
+        $dueText = match (true) {
+            $balance > 0 => number_format($balance, 0) . ' ৳ Credit',
+            $balance < 0 => number_format(abs($balance), 0) . ' ৳ Due',
+            default => 'Cleared',
+        };
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($email)
+                ->send(new \App\Mail\DueReminderMail($record, $dueText));
+
+            \Filament\Notifications\Notification::make()
+                ->title('Email sent successfully')
+                ->success()
+                ->send();
+        } catch (\Throwable $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Failed to send email')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }),
+
+
                 ])->label('Actions'),
             ])
             ->bulkActions([
