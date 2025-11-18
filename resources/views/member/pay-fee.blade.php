@@ -8,9 +8,51 @@
     <h2 class="text-2xl font-bold mb-6 text-amber-400">Pay Membership Fee</h2>
 
     {{-- Current Balance --}}
+    @php
+        use App\Models\Payments;
+        use Carbon\Carbon;
+
+        $registrationFee = 100;
+        $monthlyFee = 200;
+        $yearlyFee = 2400;
+
+        $registrationDate = Carbon::parse($member->registration_date);
+        $now = Carbon::now();
+
+        $totalFeeRequired = $registrationFee;
+
+        if ($member->membership_plan === 'monthly') {
+            $monthsToCharge = $registrationDate->copy()->startOfMonth()->diffInMonths($now->copy()->startOfMonth()) + 1;
+            $totalFeeRequired += $monthsToCharge * $monthlyFee;
+        } elseif ($member->membership_plan === 'yearly') {
+            $yearsToCharge = $registrationDate->copy()->startOfYear()->diffInYears($now->copy()->startOfYear()) + 1;
+            $totalFeeRequired += $yearsToCharge * $yearlyFee;
+        }
+
+        $totalPaid = Payments::where('member_id', $member->id)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $balanceAmount = $totalPaid - $totalFeeRequired;
+
+        if ($balanceAmount > 0) {
+            $balanceText = "Credit: " . number_format($balanceAmount, 2) . " BDT";
+            $balanceColor = "text-green-400";
+        } elseif ($balanceAmount < 0) {
+            $balanceText = "Due: " . number_format(abs($balanceAmount), 2) . " BDT";
+            $balanceColor = "text-red-400";
+        } else {
+            $balanceText = "Balanced";
+            $balanceColor = "text-gray-400";
+        }
+    @endphp
+
     <div class="mb-6 p-4 bg-gray-700 text-gray-100 rounded shadow">
-        <p class="font-medium">Current Balance: <span class="font-bold">{{ number_format($member->balance, 2) }} BDT</span></p>
-        <p class="text-gray-300 text-sm">This is the total paid amount or remaining balance for your membership.</p>
+        <p class="font-medium">Total Paid Amount: 
+            <span class="font-bold">{{ number_format($totalPaid, 2) }} BDT</span> - 
+            <span class="{{ $balanceColor }}">{{ $balanceText }}</span>
+        </p>
+        <p class="text-gray-300 text-sm">This shows your total paid amount and current balance status for your membership.</p>
     </div>
 
     {{-- Success / Error messages --}}

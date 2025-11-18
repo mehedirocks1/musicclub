@@ -15,7 +15,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Raziul\Sslcommerz\Facades\Sslcommerz;
-
+use DevWizard\Textify\Facades\Textify;
 class MembersController extends Controller
 {
     use AuthorizesRequests;
@@ -118,38 +118,76 @@ class MembersController extends Controller
     /**
      * Store payment and initialize SSLCommerz
      */
-    public function payFeeStore(Request $request)
-    {
-        $member = Auth::guard('member')->user();
+  public function payFeeStore(Request $request)
+{
+    $member = Auth::guard('member')->user();
 
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'tran_id' => 'required|string|unique:payments,tran_id',
-        ]);
+    $request->validate([
+        'amount' => 'required|numeric|min:1',
+        'tran_id' => 'required|string|unique:payments,tran_id',
+    ]);
 
-        $amount = $request->input('amount');
+    $amount = $request->input('amount');
 
-        $payment = Payments::create([
-            'member_id' => $member->id,
-            'amount' => $amount,
-            'currency' => 'BDT',
-            'status' => 'pending',
-            'gateway' => 'SSLCOMMERZ',
-            'tran_id' => $request->tran_id,
-        ]);
+    // Create the payment record as 'paid' (you can keep it 'pending' if you want to confirm after gateway)
+    $payment = Payments::create([
+        'member_id' => $member->id,
+        'amount' => $amount,
+        'currency' => 'BDT',
+        'status' => 'paid',
+        'gateway' => 'SSLCOMMERZ',
+        'tran_id' => $request->tran_id,
+    ]);
 
-        $resp = Sslcommerz::setOrder($payment->amount, $payment->tran_id, 'POJ Membership Fee')
-            ->setCustomer($member->full_name, $member->email, $member->phone)
-            ->setShippingInfo(1, $member->address)
-            ->makePayment();
+    // Send SMS
+    if ($member->phone) {
+        $phone = $this->normalizeBdMsisdn($member->phone); // function to normalize Bangladeshi numbers
+        $amt = number_format((float)$amount, 2);
+        $msg = "Congratulations {$member->full_name}, your payment of BDT {$amt} has been received. Please check your dashboard for details.";
 
-        if ($resp->success()) {
-            return redirect($resp->gatewayPageURL());
+        try {
+            Textify::to($phone)
+                ->message($msg)
+                ->via('bulksmsbd') // or whatever provider you configured
+                ->send();
+
+            \Log::info("SMS sent successfully to {$phone} for payment {$payment->tran_id}");
+        } catch (\Exception $e) {
+            \Log::error("SMS sending failed for member {$member->id}, phone {$phone}: " . $e->getMessage());
         }
-
-        $payment->delete();
-        return redirect()->back()->with('error', 'Unable to initialize payment. Please try again.');
+    } else {
+        \Log::warning("No phone number for member {$member->id}, cannot send SMS.");
     }
+
+    // Initialize SSLCommerz payment
+    $resp = Sslcommerz::setOrder($payment->amount, $payment->tran_id, 'POJ Membership Fee')
+        ->setCustomer($member->full_name, $member->email, $member->phone)
+        ->setShippingInfo(1, $member->address)
+        ->makePayment();
+
+    if ($resp->success()) {
+        return redirect($resp->gatewayPageURL());
+    }
+
+    // If payment initialization fails, delete the record
+    $payment->delete();
+    return redirect()->back()->with('error', 'Unable to initialize payment. Please try again.');
+}
+
+/**
+ * Normalize Bangladeshi phone numbers to +88 format
+ */
+private function normalizeBdMsisdn($phone)
+{
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($phone) === 11 && substr($phone, 0, 2) === '01') {
+        return '+88' . $phone;
+    } elseif (strlen($phone) === 13 && substr($phone, 0, 3) === '880') {
+        return '+' . $phone;
+    }
+    return $phone;
+}
+
 
     /**
      * SSLCommerz payment success callback

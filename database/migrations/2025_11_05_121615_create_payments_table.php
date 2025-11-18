@@ -17,10 +17,10 @@ return new class extends Migration
             $table->unsignedBigInteger('package_id')->nullable()->index();
 
             // 💰 Payment info
-            $table->string('tran_id')->nullable()->unique(); // gateway transaction reference
+            $table->string('tran_id')->unique(); // gateway transaction reference, NOT NULL
             $table->decimal('amount', 12, 2)->default(0);
             $table->string('currency', 10)->default('BDT');
-            $table->string('status')->default('pending'); // pending, paid, failed
+            $table->enum('status', ['pending', 'paid', 'completed', 'failed', 'cancelled', 'validation_failed'])->default('pending');
             $table->string('gateway')->nullable(); // sslcommerz, stripe, etc.
             $table->string('method')->nullable(); // bkash, nagad, cash, card
             $table->string('transaction_id')->nullable()->index(); // bank_tran_id / val_id
@@ -34,10 +34,9 @@ return new class extends Migration
                 ->references('id')->on('members')
                 ->onDelete('cascade');
 
-            // If you want package link later:
-            // $table->foreign('package_id')
-            //     ->references('id')->on('packages')
-            //     ->onDelete('set null');
+            $table->foreign('package_id')
+                ->references('id')->on('packages')
+                ->onDelete('set null');
         });
     }
 
