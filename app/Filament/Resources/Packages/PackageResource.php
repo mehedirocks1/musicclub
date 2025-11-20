@@ -12,10 +12,12 @@ use Modules\Packages\Models\Package;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 
-use Filament\Forms;
+use Livewire\Component as Livewire;
+
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DateTimePicker;
@@ -23,6 +25,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms;
 
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
@@ -41,6 +44,7 @@ use Filament\Actions\ViewAction;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+
 use Illuminate\Support\Str;
 
 class PackageResource extends Resource
@@ -53,177 +57,245 @@ class PackageResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Package Details')
-                    ->description('Main content and descriptive fields for the package')
-                    ->schema([
-                        Grid::make(2)->schema([
+        return $schema->components([
+            Section::make('Package Details')
+                ->description('Main content and descriptive fields for the package')
+                ->schema([
+                    Grid::make(2)
+                        ->schema([
                             TextInput::make('name')
                                 ->label('Package Name')
+                                ->placeholder('e.g. Professional Music Production')
                                 ->required()
-                                ->live()
-                                ->afterStateUpdated(fn ($state, Set $set) =>
-                                    $set('slug', Str::slug($state))
-                                ),
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn ($state, Set $set) => $set('slug', Str::slug($state))),
 
                             TextInput::make('slug')
+                                ->label('Slug')
+                                ->placeholder('auto-generated from name')
                                 ->required()
-                                ->unique(ignoreRecord: true)
-                                ->placeholder('auto-generated'),
+                                ->unique(ignoreRecord: true),
                         ]),
 
-                        Textarea::make('summary')
-                            ->label('Short Summary')
-                            ->rows(3)
-                            ->maxLength(300)
-                            ->extraAttributes(['class' => 'dark:text-gray-300']),
+                    Textarea::make('summary')
+                        ->label('Short Summary')
+                        ->placeholder('One or two lines summary for listings')
+                        ->rows(3)
+                        ->maxLength(300),
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | FIXED RICH EDITOR — removes <p><strong>Full Description</strong></p>
-                        |--------------------------------------------------------------------------
-                        */
-                        RichEditor::make('description')
-                            ->label('Full Description')
-                            ->disableToolbarButtons(['blockquote'])
-                            ->placeholder('Write full description...')
-                            ->extraAttributes(['class' => 'dark:text-gray-300'])
-                            ->afterStateHydrated(function ($component, $state) {
-                                if ($state === '<p><strong>Full Description</strong></p>' ||
-                                    trim(strip_tags($state)) === '') {
-                                    $component->state(null);
-                                }
-                            })
-                            ->state(function ($state) {
-                                if ($state === '<p><strong>Full Description</strong></p>' ||
-                                    trim(strip_tags($state)) === '') {
-                                    return null;
-                                }
-                                return $state;
-                            }),
-                    ]),
+                    RichEditor::make('description')
+                        ->label('Full Description')
+                        ->toolbarButtons([
+                            'bold',
+                            'italic',
+                            'underline',
+                            'bulletList',
+                            'orderedList',
+                            'link',
+                            'codeBlock',
+                        ])
+                        ->placeholder('Describe what the package contains, outcomes and who it is for'),
+                ]),
 
-                Section::make('Configuration')
-                    ->columns(3)
-                    ->schema([
-                        TextInput::make('code')
-                            ->required()
-                            ->unique(ignoreRecord: true),
+            Section::make('Configuration')
+                ->description('Package settings')
+                ->columns(3)
+                ->schema([
+                    TextInput::make('code')
+                        ->label('Package Code')
+                        ->placeholder('e.g. PM-001')
+                        ->required()
+                        ->unique(ignoreRecord: true)
+                        ->helperText('Unique identifier for billing'),
 
-                        Select::make('status')
-                            ->options([
-                                'draft' => 'Draft',
-                                'active' => 'Active',
-                                'paused' => 'Paused',
-                                'retired' => 'Retired',
-                            ])
-                            ->default('draft')
-                            ->required(),
+                    Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'draft' => 'Draft',
+                            'active' => 'Active',
+                            'paused' => 'Paused',
+                            'retired' => 'Retired',
+                        ])
+                        ->default('draft')
+                        ->required()
+                        ->searchable(),
 
-                        Select::make('visibility')
-                            ->options([
-                                'public' => 'Public',
-                                'unlisted' => 'Unlisted',
-                                'archived' => 'Archived',
-                            ])
-                            ->default('public')
-                            ->required(),
-                    ]),
+                    Select::make('visibility')
+                        ->label('Visibility')
+                        ->options([
+                            'public' => 'Public',
+                            'unlisted' => 'Unlisted',
+                            'archived' => 'Archived',
+                        ])
+                        ->default('public')
+                        ->required()
+                        ->helperText('Controls public listing visibility'),
+                ]),
 
-                Section::make('Media')
-                    ->columns(2)
-                    ->schema([
-                        FileUpload::make('image_path')
-                            ->disk('public')
-                            ->directory('packages')
-                            ->image()
-                            ->imageEditor()
-                            ->imageCropAspectRatio('16:9'),
+            Section::make('Media')
+                ->description('Images and promotional content')
+                ->columns(2)
+                ->schema([
+                    FileUpload::make('image_path')
+                        ->label('Package Image')
+                        ->disk('public')
+                        ->directory('packages')
+                        ->visibility('public')
+                        ->image()
+                        ->imageEditor()
+                        ->imageResizeMode('cover')
+                        ->imageCropAspectRatio('16:9')
+                        ->rules(['dimensions:min_width=1200,min_height=675,ratio=16/9'])
+                        ->helperText('16:9 aspect ratio — minimum 1200×675px'),
 
-                        TextInput::make('promo_video_url')->url(),
-                    ]),
+                    TextInput::make('promo_video_url')
+                        ->label('Promo Video URL')
+                        ->url()
+                        ->placeholder('https://youtu.be/your-promo')
+                        ->helperText('Optional embeddable video link'),
+                ]),
 
-                Section::make('Additional Information')
-                    ->schema([
-                        Tabs::make()
-                            ->tabs([
-                                Tab::make('Features')->schema([
+            Section::make('Additional Information')
+                ->schema([
+                    Tabs::make('Details')
+                        ->tabs([
+                            Tab::make('Features')
+                                ->schema([
                                     Repeater::make('features')
+                                        ->label('Package Features')
                                         ->schema([
-                                            TextInput::make('value')->required(),
-                                        ])->collapsed(),
+                                            TextInput::make('value')
+                                                ->label('Feature')
+                                                ->placeholder('e.g. Certificate of Completion')
+                                                ->required(),
+                                        ])
+                                        ->collapsed()
+                                        ->defaultItems(1)
+                                        ->addActionLabel('Add Feature'),
                                 ]),
 
-                                Tab::make('Prerequisites')->schema([
+                            Tab::make('Prerequisites')
+                                ->schema([
                                     Repeater::make('prerequisites')
+                                        ->label('Prerequisites')
                                         ->schema([
-                                            TextInput::make('value')->required(),
-                                        ])->collapsed(),
+                                            TextInput::make('value')
+                                                ->label('Prerequisite')
+                                                ->placeholder('e.g. Basic music theory')
+                                                ->required(),
+                                        ])
+                                        ->collapsed()
+                                        ->defaultItems(1)
+                                        ->addActionLabel('Add Prerequisite'),
                                 ]),
-                            ]),
-                    ]),
+                        ]),
+                ]),
 
-                Section::make('Pricing & Billing')
-                    ->schema([
-                        Grid::make(4)->schema([
+            Section::make('Pricing & Billing')
+                ->description('Set pricing and billing configuration')
+                ->schema([
+                    Grid::make(4)
+                        ->schema([
                             TextInput::make('price')
+                                ->label('Price')
                                 ->numeric()
                                 ->minValue(0)
+                                ->required()
                                 ->prefix(fn (Get $get) => $get('currency') ?: 'BDT')
-                                ->required(),
+                                ->placeholder('0.00'),
 
                             Select::make('currency')
-                                ->options(['BDT' => 'BDT', 'USD' => 'USD'])
-                                ->default('BDT'),
+                                ->label('Currency')
+                                ->options([
+                                    'BDT' => 'BDT',
+                                    'USD' => 'USD',
+                                ])
+                                ->default('BDT')
+                                ->required(),
 
                             Select::make('billing_period')
+                                ->label('Billing Period')
                                 ->options([
                                     'one_time' => 'One Time',
                                     'monthly' => 'Monthly',
                                     'yearly' => 'Yearly',
                                 ])
                                 ->default('one_time')
+                                ->required()
                                 ->reactive(),
 
                             TextInput::make('access_duration_days')
+                                ->label('Access Duration (days)')
                                 ->numeric()
                                 ->minValue(1)
-                                ->visible(fn (Get $get) => $get('billing_period') === 'one_time'),
+                                ->visible(fn (Get $get) => $get('billing_period') === 'one_time')
+                                ->helperText('Duration for one-time packages')
+                                ->placeholder('30'),
                         ]),
 
-                        Grid::make(2)->schema([
-                            DateTimePicker::make('sale_starts_at'),
-                            DateTimePicker::make('sale_ends_at'),
+                    Grid::make(2)
+                        ->schema([
+                            DateTimePicker::make('sale_starts_at')->label('Sale Starts At'),
+                            DateTimePicker::make('sale_ends_at')->label('Sale Ends At'),
                         ]),
-                    ]),
-            ]);
+                ]),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image_path')->square(),
-                Tables\Columns\TextColumn::make('code')->badge()->sortable()->searchable(),
+                Tables\Columns\ImageColumn::make('image_path')
+                    ->label('Image')
+                    ->square()
+                    ->defaultImageUrl('/images/placeholder-16x9.png'),
+
+                Tables\Columns\TextColumn::make('code')
+                    ->sortable()
+                    ->searchable()
+                    ->badge(),
+
                 Tables\Columns\TextColumn::make('name')
+                    ->sortable()
+                    ->searchable()
                     ->limit(30)
-                    ->url(fn ($record) => static::getUrl('view', ['record' => $record])),
+                    ->url(fn ($record) => static::getUrl('view', ['record' => $record]))
+                    ->openUrlInNewTab(false),
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
+                    ->color(fn (string $state) => match ($state) {
                         'draft' => 'warning',
                         'active' => 'success',
                         'paused' => 'gray',
                         'retired' => 'danger',
-                    }),
+                        default => 'gray',
+                    })
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('billing_period')->badge(),
-                Tables\Columns\TextColumn::make('price')->money(fn ($record) => $record->currency ?: 'BDT'),
-                Tables\Columns\TextColumn::make('updated_at')->since(),
+                Tables\Columns\TextColumn::make('billing_period')
+                    ->badge()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('price')
+                    ->money(fn ($record) => $record->currency ?: 'BDT', false)
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('sale_starts_at')
+                    ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('sale_ends_at')
+                    ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->since(),
             ])
+
             ->defaultSort('updated_at', 'desc')
+
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([
                     'draft' => 'Draft',
@@ -231,8 +303,16 @@ class PackageResource extends Resource
                     'paused' => 'Paused',
                     'retired' => 'Retired',
                 ]),
+
+                Tables\Filters\SelectFilter::make('billing_period')->options([
+                    'one_time' => 'One time',
+                    'monthly' => 'Monthly',
+                    'yearly' => 'Yearly',
+                ]),
+
                 TrashedFilter::make(),
             ])
+
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
@@ -240,21 +320,36 @@ class PackageResource extends Resource
                     DeleteAction::make(),
                 ]),
             ])
-            ->headerActions([CreateAction::make()]);
+
+            ->headerActions([
+                CreateAction::make(),
+            ])
+
+            ->toolbarActions([
+                BulkAction::make('delete-selected')
+                    ->label('Delete selected')
+                    ->requiresConfirmation()
+                    ->action(function (\Illuminate\Support\Collection $records) {
+                        $records->each->delete();
+                    }),
+            ]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListPackages::route('/'),
+            'index'  => ListPackages::route('/'),
             'create' => CreatePackage::route('/create'),
-            'view' => ViewPackage::route('/{record}'),
-            'edit' => EditPackage::route('/{record}/edit'),
+            'view'   => ViewPackage::route('/{record}'),
+            'edit'   => EditPackage::route('/{record}/edit'),
         ];
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->withoutGlobalScopes([SoftDeletingScope::class]);
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 }

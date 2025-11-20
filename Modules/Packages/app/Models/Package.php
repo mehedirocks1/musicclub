@@ -18,21 +18,36 @@ class Package extends Model
         'rating_avg', 'tax_rate', 'is_discountable', 'dob',
     ];
 
+    /**
+     * CASTS — VERY IMPORTANT
+     * These make Filament JSON fields work correctly.
+     */
     protected $casts = [
+        'summary'               => 'array',
+        'description'           => 'array',
         'features'              => 'array',
         'prerequisites'         => 'array',
+        'target_audience'       => 'array',
+
         'sale_starts_at'        => 'datetime',
         'sale_ends_at'          => 'datetime',
+
         'dob'                   => 'date',
+
         'price'                 => 'decimal:2',
         'rating_avg'            => 'decimal:2',
         'tax_rate'              => 'decimal:2',
+
         'is_discountable'       => 'boolean',
+
         'access_duration_days'  => 'integer',
         'enrollments_count'     => 'integer',
         'sort_order'            => 'integer',
     ];
 
+    /**
+     * Use slug for route binding
+     */
     public function getRouteKeyName(): string
     {
         return 'slug';

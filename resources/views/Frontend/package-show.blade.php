@@ -11,26 +11,49 @@
     // --- Clean Summary ---
     $summary = $package->summary;
     if (is_array($summary)) {
-        $summary = implode(', ', array_filter($summary, fn($v) => is_scalar($v)));
+        $summary = implode(', ', array_map(fn($v) => is_array($v) && isset($v['value']) ? $v['value'] : $v, $summary));
     }
 
     // --- Clean Description + Remove Extra Blank Lines ---
     $description = $package->description;
     if (is_array($description)) {
-        $description = implode("\n", array_filter($description, fn($v) => is_scalar($v)));
+        $description = implode("\n", array_map(fn($v) => is_array($v) && isset($v['value']) ? $v['value'] : $v, $description));
     }
     $description = preg_replace("/\n+/", "\n", trim($description));
+
+    // --- Clean Features ---
+    $features = [];
+    if (is_array($package->features)) {
+        foreach ($package->features as $f) {
+            if (is_array($f) && isset($f['value'])) $features[] = $f['value'];
+            elseif (is_scalar($f)) $features[] = $f;
+        }
+    }
+
+    // --- Clean Prerequisites ---
+    $prerequisites = [];
+    if (is_array($package->prerequisites)) {
+        foreach ($package->prerequisites as $p) {
+            if (is_array($p) && isset($p['value'])) $prerequisites[] = $p['value'];
+            elseif (is_scalar($p)) $prerequisites[] = $p;
+        }
+    }
 
     // --- Clean Audience ---
     $audience = $package->target_audience;
     if (is_array($audience)) {
-        $audience = implode(', ', array_filter($audience, fn($v) => is_scalar($v)));
+        $audience = implode(', ', array_map(fn($v) => is_array($v) && isset($v['value']) ? $v['value'] : $v, $audience));
+    }
+
+    // --- Convert YouTube URL to Embed URL ---
+    $promoVideoUrl = $package->promo_video_url;
+    if ($promoVideoUrl && str_contains($promoVideoUrl, 'youtube.com/watch')) {
+        $promoVideoUrl = str_replace('watch?v=', 'embed/', $promoVideoUrl);
     }
 @endphp
 
 <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
 
-    {{-- Back --}}
     <a href="{{ route('frontend.packages.index') }}"
        class="inline-flex items-center text-sm text-gray-400 hover:text-white mb-6">
         ← Back to Packages
@@ -39,9 +62,12 @@
     <div class="bg-[#111] rounded-2xl border border-gray-800 shadow-lg overflow-hidden">
 
         {{-- Promo video OR image --}}
-        @if($package->promo_video_url)
+        @if($promoVideoUrl)
             <div class="aspect-video w-full">
-                <iframe src="{{ $package->promo_video_url }}" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
+                <iframe src="{{ $promoVideoUrl }}" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
+                <p class="text-gray-400 mt-2">
+                    If the video doesn’t load, <a href="{{ $package->promo_video_url }}" target="_blank" class="text-blue-400 underline">click here to watch on YouTube</a>.
+                </p>
             </div>
         @elseif($package->image_path)
             <img
@@ -102,13 +128,25 @@
                 </div>
             @endif
 
+            {{-- Prerequisites --}}
+            @if(count($prerequisites))
+                <div>
+                    <h2 class="text-lg font-semibold mb-2 text-white">Prerequisites</h2>
+                    <ul class="list-disc list-inside text-gray-300 space-y-1">
+                        @foreach($prerequisites as $prereq)
+                            <li>{{ $prereq }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             {{-- Features --}}
-            @if(is_array($package->features) && count($package->features))
+            @if(count($features))
                 <div>
                     <h2 class="text-lg font-semibold mb-2 text-white">Features</h2>
                     <ul class="list-disc list-inside text-gray-300 space-y-1">
-                        @foreach($package->features as $feature)
-                            <li>{{ is_scalar($feature) ? $feature : '' }}</li>
+                        @foreach($features as $feature)
+                            <li>{{ $feature }}</li>
                         @endforeach
                     </ul>
                 </div>
