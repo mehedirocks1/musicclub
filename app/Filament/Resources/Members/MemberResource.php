@@ -31,6 +31,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Payments;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MailSender;
 
 class MemberResource extends Resource
 {
@@ -396,21 +398,31 @@ class MemberResource extends Resource
             default => 'Cleared',
         };
 
-        try {
-            \Illuminate\Support\Facades\Mail::to($email)
-                ->send(new \App\Mail\DueReminderMail($record, $dueText));
+try {
+    \Illuminate\Support\Facades\Mail::to($email)->send(
+        new \App\Mail\MailSender(
+            'Due Reminder - POJ Music Club',
+            'emails.due_reminder',
+            [
+                'member' => $record,
+                'due' => $dueText
+            ],
+            true // markdown mode enabled
+        )
+    );
 
-            \Filament\Notifications\Notification::make()
-                ->title('Email sent successfully')
-                ->success()
-                ->send();
-        } catch (\Throwable $e) {
-            \Filament\Notifications\Notification::make()
-                ->title('Failed to send email')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-        }
+    \Filament\Notifications\Notification::make()
+        ->title('Email sent successfully')
+        ->success()
+        ->send();
+} catch (\Throwable $e) {
+    \Filament\Notifications\Notification::make()
+        ->title('Failed to send email')
+        ->body($e->getMessage())
+        ->danger()
+        ->send();
+}
+
     }),
 
 
