@@ -12,6 +12,7 @@ use Modules\Packages\Models\Package;
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\FrontendController;
 use App\Models\Branch;
+use App\Http\Controllers\Auth\OtpForgotPasswordController;
 
 Route::view('/', 'Frontend.home')->name('home');
 Route::view('/about', 'Frontend.about')->name('about');
@@ -34,10 +35,32 @@ Route::post('/login', [LoginController::class, 'login'])->name('login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 
-// Use a dedicated controller for handling callbacks
+// Member Forget Password Routes
+Route::prefix('member')->group(function () {
+    // Show phone input
+    Route::get('forget-password', [OtpForgotPasswordController::class, 'showMobileForm'])
+        ->name('member.password.otp.request');
 
+    // Send OTP
+    Route::post('forget-password', [OtpForgotPasswordController::class, 'sendOtp'])
+        ->name('member.password.otp.send');
 
+    // Show OTP form
+    Route::get('forget-password/verify', [OtpForgotPasswordController::class, 'showOtpForm'])
+        ->name('member.password.otp.verify.form');
 
+    // Verify OTP
+    Route::post('forget-password/verify', [OtpForgotPasswordController::class, 'verifyOtp'])
+        ->name('member.password.otp.verify');
+
+    // Show reset password form
+    Route::get('forget-password/reset', [OtpForgotPasswordController::class, 'showResetForm'])
+        ->name('member.password.reset.form');
+
+    // Reset password
+    Route::post('forget-password/reset', [OtpForgotPasswordController::class, 'resetPassword'])
+        ->name('member.password.reset');
+});
 
 
 // Public about page

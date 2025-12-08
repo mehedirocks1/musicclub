@@ -91,7 +91,7 @@
                                            class="w-4 h-4 rounded border-emerald-700 text-yellow-500 focus:ring-yellow-500">
                                     <span class="ml-2 text-sm">Remember me</span>
                                 </label>
-                                <a href="#" class="text-sm text-yellow-500 hover:text-yellow-400">Forgot Password?</a>
+                                <a href="{{ route('member.password.otp.request') }}" class="text-sm text-yellow-500 hover:text-yellow-400">Forgot Password?</a>
                             </div>
 
                             <button type="submit" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105" style="box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);">
